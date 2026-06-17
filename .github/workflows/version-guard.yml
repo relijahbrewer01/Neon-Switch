@@ -1,0 +1,59 @@
+name: Version Guard
+
+on:
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "scenes/**"
+      - "project.godot"
+      - "icon.svg"
+      - "assets/**"
+      - "audio/**"
+
+permissions:
+  contents: read
+
+jobs:
+  require-version-bump:
+    name: Require playable updates to bump the build version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out pull-request branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare project versions
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+
+          old_version="$({ git show "origin/${BASE_REF}:project.godot" || true; } \
+            | sed -n 's/^config\/version="\(.*\)"$/\1/p' \
+            | head -n 1)"
+          new_version="$(sed -n 's/^config\/version="\(.*\)"$/\1/p' project.godot | head -n 1)"
+
+          if [[ -z "${new_version}" ]]; then
+            echo "project.godot does not define application/config/version."
+            exit 1
+          fi
+
+          if [[ -z "${old_version}" ]]; then
+            echo "The base branch has no version value; accepting ${new_version}."
+            exit 0
+          fi
+
+          echo "Base version: ${old_version}"
+          echo "Head version: ${new_version}"
+
+          if [[ "${old_version}" == "${new_version}" ]]; then
+            echo "Playable game files changed without a version bump."
+            echo "Increment application/config/version in project.godot and update the smoke-test expectation."
+            exit 1
+          fi

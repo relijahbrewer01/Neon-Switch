@@ -11,9 +11,11 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 3: Formalize Game-State Transitions**
+**Foundation Phase — Step 4: Extract Wave Generation**
 
-The balance-centralization milestone is complete and documented in [`BALANCE_REPORT.md`](BALANCE_REPORT.md). The next implementation branch should make state changes explicit, route primary input through one action handler, and guard transitions against overlap.
+The state-transition milestone is complete and documented in [`STATE_TRANSITIONS_REPORT.md`](STATE_TRANSITIONS_REPORT.md). The next implementation branch should move wave construction out of `main.gd`, define pattern tiers, and enforce the minimum reaction-time policy.
+
+Every playable update must also increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
 ---
 
@@ -55,12 +57,15 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Display the canonical version as a tiny top-left debug label.
   - [x] Record the finalized balance-centralization report.
 
-- [ ] **Step 3 — Formalize game-state transitions.** **Next**
-  - [ ] Add explicit ready, playing, and game-over entry methods.
-  - [ ] Route input through a single primary-action handler.
-  - [ ] Guard against duplicate collision and restart events.
+- [x] **Step 3 — Formalize game-state transitions.**
+  - [x] Add explicit ready, playing, and game-over entry methods.
+  - [x] Route input through a single primary-action handler.
+  - [x] Guard against duplicate collision and restart events.
+  - [x] Protect delayed game-over UI from stale callbacks.
+  - [x] Add mandatory version-bump policy and CI guard.
+  - [x] Record the finalized state-transition report.
 
-- [ ] **Step 4 — Extract wave generation.**
+- [ ] **Step 4 — Extract wave generation.** **Next**
   - [ ] Add `scripts/game/wave_director.gd`.
   - [ ] Define introductory, rhythm, and pressure pattern tiers.
   - [ ] Enforce a mathematical minimum reaction window.
@@ -203,4 +208,5 @@ Whenever work is merged:
 2. Add newly discovered work under the correct phase.
 3. Record intentionally deferred work instead of silently dropping it.
 4. Update **Current Focus** and identify exactly one next step.
-5. Keep finished items visible so the roadmap remains a history as well as a forecast.
+5. Increment the build version for every playable game update.
+6. Keep finished items visible so the roadmap remains a history as well as a forecast.

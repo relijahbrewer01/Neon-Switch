@@ -24,6 +24,18 @@ The project is configured for a 720×1280 portrait viewport and scales to differ
 
 A small version string appears in the top-left corner. It is read from `application/config/version` in `project.godot`, so screenshots and bug reports identify the exact build being tested.
 
+## Versioning
+
+Every playable game update must increment the development build number in `project.godot`.
+
+Current development format:
+
+```text
+0.1.0-dev.N
+```
+
+The repository includes a pull-request Version Guard that fails when runtime files change without a version bump. Full instructions live in `docs/VERSIONING.md`.
+
 ## Android Export
 
 Godot's current Android export workflow requires OpenJDK 17 and the Android SDK. In Godot, configure both under **Editor Settings → Export → Android**, install the Android export templates, then create an Android preset under **Project → Export**.
@@ -51,7 +63,9 @@ Neon-Switch/
 │   ├── BALANCE_REPORT.md
 │   ├── BASELINE_REPORT.md
 │   ├── FOUNDATION_PLAN.md
-│   └── ROADMAP.md
+│   ├── ROADMAP.md
+│   ├── STATE_TRANSITIONS_REPORT.md
+│   └── VERSIONING.md
 ├── scenes/
 │   ├── main.tscn
 │   ├── obstacle.tscn
@@ -73,7 +87,7 @@ Neon-Switch/
 ## Architecture
 
 - `game_balance.gd` is the central authority for gameplay-critical timing, positioning, scoring, speed, and spawn values.
-- `main.gd` owns game state, spawning orchestration, scoring, generated audio, and save data.
+- `main.gd` owns the guarded game-state machine, spawning orchestration, scoring, generated audio, and save data.
 - `player.gd` owns lane switching, collision signals, animation, and mobile vibration.
 - `obstacle.gd` and `pickup.gd` are lightweight moving entities.
 - `background.gd` draws and animates the entire playfield procedurally.
@@ -104,7 +118,7 @@ Change tuning values there rather than scattering new numeric literals through g
 
 ## Automated Validation
 
-GitHub Actions imports and parses the project with Godot 4.6.3, then runs `tests/baseline_smoke_test.gd`. The smoke test covers the core loop, input paths, collisions, restart stress, save persistence, centralized balance values, and displayed build version.
+GitHub Actions imports and parses the project with Godot 4.6.3, then runs `tests/baseline_smoke_test.gd`. The smoke test covers the core loop, guarded state transitions, input paths, collisions, restart stress, save persistence, centralized balance values, and displayed build version.
 
 ## License
 
