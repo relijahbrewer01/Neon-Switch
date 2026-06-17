@@ -6,7 +6,7 @@ A complete, self-contained one-touch mobile arcade game built with **Godot 4.6.x
 
 Your signal orb races down one of two neon lanes. Tap anywhere to switch lanes, dodge incoming barriers, and collect green energy shards. The run gradually accelerates, and later waves introduce staggered barriers that demand quick double-switches.
 
-There are no external art dependencies. Every visual is drawn in code, and the included sound effects are original synthesized WAV files.
+There are no external art dependencies. Every visual is drawn in code, and the sound effects are generated at runtime from GDScript, so the repository contains no external media dependencies.
 
 ## Controls
 
@@ -45,11 +45,6 @@ Neon-Switch/
 ├── project.godot
 ├── icon.svg
 ├── README.md
-├── audio/
-│   ├── collect.wav
-│   ├── crash.wav
-│   ├── start.wav
-│   └── switch.wav
 ├── scenes/
 │   ├── main.tscn
 │   ├── obstacle.tscn
@@ -66,7 +61,7 @@ Neon-Switch/
 
 ## Architecture
 
-- `main.gd` owns the game state, spawning, difficulty curve, scoring, audio, and save data.
+- `main.gd` owns the game state, spawning, difficulty curve, scoring, generated audio, and save data.
 - `player.gd` owns lane switching, collision signals, animation, and mobile vibration.
 - `obstacle.gd` and `pickup.gd` are lightweight moving entities.
 - `background.gd` draws and animates the entire playfield procedurally.
