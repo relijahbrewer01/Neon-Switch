@@ -11,7 +11,10 @@ enum GameState { READY, PLAYING, GAME_OVER }
 @onready var player: NeonPlayer = $World/Player
 @onready var hud: NeonHUD = $HUD/HUDRoot
 
-var state := GameState.READY
+var state: int = GameState.READY
+var state_transition_in_progress := false
+var state_transition_serial := 0
+
 var rng := RandomNumberGenerator.new()
 var score_float := 0.0
 var displayed_score := 0
@@ -34,15 +37,14 @@ func _ready() -> void:
     _build_audio_players()
     player.hit_obstacle.connect(_on_player_hit)
     player.collected_pickup.connect(_on_player_collect)
-    player.reset_player()
-    hud.show_ready(best_score)
+    _enter_ready_state(true)
 
 func _process(delta: float) -> void:
     if restart_lock > 0.0:
-        restart_lock -= delta
+        restart_lock = maxf(0.0, restart_lock - delta)
 
     if screen_shake > 0.0:
-        screen_shake -= delta
+        screen_shake = maxf(0.0, screen_shake - delta)
         world.position = Vector2(rng.randf_range(-8.0, 8.0), rng.randf_range(-7.0, 7.0)) * (
             screen_shake / GameBalance.SCREEN_SHAKE_DURATION
         )
@@ -71,30 +73,149 @@ func _process(delta: float) -> void:
         hud.update_stats(displayed_score, best_score, shards)
 
 func _input(event: InputEvent) -> void:
-    var pressed := false
-    if event is InputEventScreenTouch:
-        pressed = event.pressed
-    elif event is InputEventMouseButton:
-        pressed = event.button_index == MOUSE_BUTTON_LEFT and event.pressed
-    elif event is InputEventKey:
-        pressed = event.pressed and not event.echo and (event.keycode == KEY_SPACE or event.keycode == KEY_ENTER)
+    if _is_primary_action_pressed(event):
+        _handle_primary_action()
 
-    if not pressed:
+func _is_primary_action_pressed(event: InputEvent) -> bool:
+    if event is InputEventScreenTouch:
+        return event.pressed
+    if event is InputEventMouseButton:
+        return event.button_index == MOUSE_BUTTON_LEFT and event.pressed
+    if event is InputEventKey:
+        return (
+            event.pressed
+            and not event.echo
+            and (event.keycode == KEY_SPACE or event.keycode == KEY_ENTER)
+        )
+    return false
+
+func _handle_primary_action() -> void:
+    # A state change remains locked through the current frame. This prevents a
+    # burst of duplicate touch events from starting a run and immediately
+    # switching lanes, or restarting more than once.
+    if state_transition_in_progress:
         return
 
     match state:
         GameState.READY:
-            _start_game()
+            _enter_playing_state()
         GameState.PLAYING:
-            player.switch_lane()
-            sfx_switch.play()
+            _request_lane_switch()
         GameState.GAME_OVER:
-            if restart_lock <= 0.0:
-                _reset_to_ready()
-                _start_game()
+            _request_restart()
 
-func _start_game() -> void:
+func _request_lane_switch() -> void:
+    if state != GameState.PLAYING or state_transition_in_progress:
+        return
+    player.switch_lane()
+    sfx_switch.play()
+
+func _request_restart() -> void:
+    if state != GameState.GAME_OVER:
+        return
+    if restart_lock > 0.0 or state_transition_in_progress:
+        return
+    _enter_playing_state()
+
+func _enter_ready_state(force: bool = false) -> bool:
+    if not _begin_state_transition(GameState.READY, force):
+        return false
+
     _clear_spawned_objects()
+    _reset_run_values()
+    player.reset_player()
+    background.set_intensity(0.0)
+    hud.show_ready(best_score)
+    return true
+
+func _enter_playing_state() -> bool:
+    if state == GameState.GAME_OVER and restart_lock > 0.0:
+        return false
+    if not _begin_state_transition(GameState.PLAYING):
+        return false
+
+    _clear_spawned_objects()
+    _reset_run_values()
+    restart_lock = 0.0
+    screen_shake = 0.0
+    world.position = Vector2.ZERO
+    player.reset_player()
+    player.set_active(true)
+    background.set_intensity(0.0)
+    hud.show_playing()
+    hud.update_stats(0, best_score, 0)
+    sfx_start.play()
+    return true
+
+func _enter_game_over_state() -> bool:
+    if not _begin_state_transition(GameState.GAME_OVER):
+        return false
+
+    player.crash()
+    screen_shake = GameBalance.SCREEN_SHAKE_DURATION
+    restart_lock = GameBalance.RESTART_LOCK_TIME
+    sfx_crash.play()
+    hud.flash_crash()
+
+    var old_best := best_score
+    if displayed_score > best_score:
+        best_score = displayed_score
+        _save_best_score()
+
+    hud.update_stats(displayed_score, best_score, shards)
+
+    var transition_serial := state_transition_serial
+    _show_game_over_panel_after_delay(
+        transition_serial,
+        displayed_score > old_best
+    )
+
+    if OS.has_feature("mobile"):
+        Input.vibrate_handheld(170)
+    return true
+
+func _begin_state_transition(next_state: int, force: bool = false) -> bool:
+    if state_transition_in_progress:
+        return false
+    if not force and not _is_transition_allowed(state, next_state):
+        return false
+
+    state_transition_in_progress = true
+    state = next_state
+    state_transition_serial += 1
+    call_deferred("_release_state_transition", state_transition_serial)
+    return true
+
+func _release_state_transition(serial: int) -> void:
+    if serial == state_transition_serial:
+        state_transition_in_progress = false
+
+func _is_transition_allowed(from_state: int, to_state: int) -> bool:
+    match from_state:
+        GameState.READY:
+            return to_state == GameState.PLAYING
+        GameState.PLAYING:
+            return to_state == GameState.GAME_OVER
+        GameState.GAME_OVER:
+            return to_state == GameState.PLAYING
+    return false
+
+func _show_game_over_panel_after_delay(
+    transition_serial: int,
+    is_new_best: bool
+) -> void:
+    await get_tree().create_timer(GameBalance.GAME_OVER_PANEL_DELAY).timeout
+
+    # Ignore an old delayed callback if another state transition has already
+    # happened. This prevents stale game-over UI from appearing over a new run.
+    if state != GameState.GAME_OVER:
+        return
+    if transition_serial != state_transition_serial:
+        return
+
+    hud.show_game_over(displayed_score, best_score, shards, is_new_best)
+
+func _reset_run_values() -> void:
     score_float = 0.0
     displayed_score = 0
     shards = 0
@@ -102,20 +223,6 @@ func _start_game() -> void:
     spawn_clock = GameBalance.INITIAL_SPAWN_CLOCK
     current_speed = GameBalance.START_SPEED
     spawn_interval = GameBalance.START_SPAWN_INTERVAL
-    state = GameState.PLAYING
-    player.reset_player()
-    player.set_active(true)
-    background.set_intensity(0.0)
-    hud.show_playing()
-    hud.update_stats(0, best_score, 0)
-    sfx_start.play()
-
-func _reset_to_ready() -> void:
-    _clear_spawned_objects()
-    state = GameState.READY
-    player.reset_player()
-    background.set_intensity(0.0)
-    hud.show_ready(best_score)
 
 func _spawn_wave() -> void:
     var blocked_lane := rng.randi_range(0, GameBalance.LANE_X.size() - 1)
@@ -170,27 +277,7 @@ func _on_player_collect(pickup: EnergyPickup) -> void:
         Input.vibrate_handheld(28)
 
 func _on_player_hit(_obstacle: NeonObstacle) -> void:
-    if state != GameState.PLAYING:
-        return
-
-    state = GameState.GAME_OVER
-    player.crash()
-    screen_shake = GameBalance.SCREEN_SHAKE_DURATION
-    restart_lock = GameBalance.RESTART_LOCK_TIME
-    sfx_crash.play()
-    hud.flash_crash()
-
-    var old_best := best_score
-    if displayed_score > best_score:
-        best_score = displayed_score
-        _save_best_score()
-
-    hud.update_stats(displayed_score, best_score, shards)
-    await get_tree().create_timer(GameBalance.GAME_OVER_PANEL_DELAY).timeout
-    hud.show_game_over(displayed_score, best_score, shards, displayed_score > old_best)
-
-    if OS.has_feature("mobile"):
-        Input.vibrate_handheld(170)
+    _enter_game_over_state()
 
 func _clear_spawned_objects() -> void:
     for child in world.get_children():
