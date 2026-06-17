@@ -128,6 +128,7 @@ func _run() -> void:
 
     await process_frame
     var second_obstacle = obstacle_scene.instantiate()
+    world.add_child(second_obstacle)
     game.call("_on_player_hit", second_obstacle)
     await create_timer(GameBalance.GAME_OVER_PANEL_DELAY + 0.06).timeout
     _expect(int(game.get("state")) == 2, "A later run can still enter GAME_OVER")
@@ -145,6 +146,7 @@ func _run() -> void:
     _expect(int(reloaded_game.get("best_score")) == 123, "Best score persists across a fresh scene instance")
 
     var reloaded_player = reloaded_game.get_node("World/Player")
+    var reloaded_world = reloaded_game.get_node("World")
     for run_index in range(10):
         if int(reloaded_game.get("state")) == 0:
             reloaded_game.call("_handle_primary_action")
@@ -158,6 +160,7 @@ func _run() -> void:
 
         var cycle_serial := int(reloaded_game.get("state_transition_serial"))
         var cycle_obstacle = obstacle_scene.instantiate()
+        reloaded_world.add_child(cycle_obstacle)
         reloaded_game.call("_on_player_hit", cycle_obstacle)
         reloaded_game.call("_on_player_hit", cycle_obstacle)
         await process_frame
