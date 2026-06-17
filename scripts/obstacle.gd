@@ -1,7 +1,7 @@
 extends Area2D
 class_name NeonObstacle
 
-var speed := 650.0
+var speed := GameBalance.START_SPEED
 var spin := 0.0
 var tint := Color("ff466b")
 var passed_player := false
@@ -17,7 +17,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
     position.y += speed * delta
     rotation += spin * delta
-    if position.y > 1380.0:
+    if position.y > GameBalance.OBSTACLE_CLEANUP_Y:
         queue_free()
 
 func _draw() -> void:
