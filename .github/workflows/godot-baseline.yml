@@ -1,0 +1,60 @@
+name: Godot Baseline
+
+on:
+  push:
+    branches:
+      - main
+      - "foundation/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Import, parse, and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      GODOT_VERSION: "4.6.3"
+      GODOT_BIN: "Godot_v4.6.3-stable_linux.x86_64"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_BIN}.zip" \
+            --output godot.zip
+          unzip -q godot.zip
+          chmod +x "${GODOT_BIN}"
+
+      - name: Import project and parse resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          "./${GODOT_BIN}" --headless --editor --path . --quit 2>&1 | tee godot-import.log
+
+      - name: Run baseline smoke test
+        id: smoke_test
+        shell: bash
+        run: |
+          set -o pipefail
+          "./${GODOT_BIN}" --headless --path . --script res://tests/baseline_smoke_test.gd 2>&1 | tee godot-baseline.log
+
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-baseline-logs
+          path: |
+            godot-import.log
+            godot-baseline.log
+          if-no-files-found: warn
+          retention-days: 7

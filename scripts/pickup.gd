@@ -19,7 +19,10 @@ func collect() -> void:
     if collected:
         return
     collected = true
-    monitoring = false
+    # Collection is triggered from a physics overlap callback, so collision
+    # state changes must wait until the current physics step has completed.
+    set_deferred("monitoring", false)
+    set_deferred("monitorable", false)
     var tween := create_tween()
     tween.set_parallel(true)
     tween.tween_property(self, "scale", Vector2(2.1, 2.1), 0.16).set_trans(Tween.TRANS_BACK)
