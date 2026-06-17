@@ -39,10 +39,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          "./${GODOT_BIN}" --headless --editor --path . --quit
+          "./${GODOT_BIN}" --headless --editor --path . --quit 2>&1 | tee godot-import.log
 
       - name: Run baseline smoke test
+        id: smoke_test
         shell: bash
         run: |
-          set -euo pipefail
-          "./${GODOT_BIN}" --headless --path . --script res://tests/baseline_smoke_test.gd
+          set -o pipefail
+          "./${GODOT_BIN}" --headless --path . --script res://tests/baseline_smoke_test.gd 2>&1 | tee godot-baseline.log
+
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-baseline-logs
+          path: |
+            godot-import.log
+            godot-baseline.log
+          if-no-files-found: warn
+          retention-days: 7
