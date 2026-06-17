@@ -43,11 +43,12 @@ func _run() -> void:
     _expect(hud != null, "HUD node exists")
 
     game.call("_input", _make_key_event(KEY_SPACE))
-    await process_frame
 
     _expect(int(game.get("state")) == 1, "Space starts a run")
     _expect(bool(player.get("active")), "Player activates when a run starts")
     _expect(int(game.get("displayed_score")) == 0, "Run begins with zero displayed score")
+
+    await process_frame
 
     game.call("_input", _make_mouse_event())
     await create_timer(0.20).timeout
