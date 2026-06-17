@@ -11,15 +11,9 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 1: Clean Runtime Baseline**
+**Foundation Phase — Step 2: Centralize Balance Values**
 
-Active branch:
-
-```text
-foundation/runtime-baseline
-```
-
-The next planned task after the baseline is accepted is **Step 2: Centralize Balance Values**.
+The runtime baseline is complete and documented in [`BASELINE_REPORT.md`](BASELINE_REPORT.md). The next implementation branch should centralize gameplay-critical tuning values without changing the current feel of the game.
 
 ---
 
@@ -44,16 +38,16 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
 
 ### Runtime and Architecture
 
-- [ ] **Step 1 — Establish a clean runtime baseline.** **In progress**
+- [x] **Step 1 — Establish a clean runtime baseline.**
   - [x] Add a headless Godot import-and-parse CI job.
   - [x] Add an automated baseline smoke test.
-  - [ ] Confirm CI passes on Godot 4.6.3.
-  - [ ] Confirm ready → play → collect → crash → restart loop.
-  - [ ] Confirm ten consecutive restart cycles.
-  - [ ] Confirm best-score persistence across a fresh scene instance.
-  - [ ] Record the finalized baseline report.
+  - [x] Confirm CI passes on Godot 4.6.3.
+  - [x] Confirm ready → play → collect → crash → restart loop.
+  - [x] Confirm ten consecutive restart cycles.
+  - [x] Confirm best-score persistence across a fresh scene instance.
+  - [x] Record the finalized baseline report.
 
-- [ ] **Step 2 — Centralize balance values.**
+- [ ] **Step 2 — Centralize balance values.** **Next**
   - [ ] Add `scripts/config/game_balance.gd`.
   - [ ] Move lane positions, player position, speeds, spawn timing, score values, and reaction timing into named constants.
   - [ ] Preserve existing gameplay feel during the refactor.
