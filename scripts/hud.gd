@@ -1,6 +1,7 @@
 extends Control
 class_name NeonHUD
 
+var version_label: Label
 var score_label: Label
 var best_label: Label
 var shard_label: Label
@@ -91,6 +92,15 @@ func _build_ui() -> void:
 
     var footer := _make_label("SPACE / CLICK ALSO WORKS", 18, Color(0.52, 0.65, 0.78, 0.78), HORIZONTAL_ALIGNMENT_CENTER)
     layout.add_child(footer)
+
+    # Read the canonical build version from project.godot so screenshots and
+    # bug reports identify the exact build without duplicating version strings.
+    var app_version := str(ProjectSettings.get_setting("application/config/version", "0.0.0-dev"))
+    version_label = _make_label("v%s" % app_version, 13, Color(0.52, 0.65, 0.78, 0.72), HORIZONTAL_ALIGNMENT_LEFT)
+    version_label.position = Vector2(10.0, 5.0)
+    version_label.size = Vector2(220.0, 20.0)
+    version_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(version_label)
 
 func _make_label(text_value: String, font_size: int, color: Color, alignment: HorizontalAlignment) -> Label:
     var label := Label.new()

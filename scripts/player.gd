@@ -4,10 +4,7 @@ class_name NeonPlayer
 signal hit_obstacle(obstacle: NeonObstacle)
 signal collected_pickup(pickup: EnergyPickup)
 
-const LANE_X: Array[float] = [210.0, 510.0]
-const MOVE_TIME: float = 0.115
-
-var lane_index: int = 0
+var lane_index: int = GameBalance.PLAYER_START_LANE
 var active: bool = false
 var move_tween: Tween
 var pulse_time: float = 0.0
@@ -23,8 +20,8 @@ func _process(delta: float) -> void:
 
 func reset_player() -> void:
     active = false
-    lane_index = 0
-    position = Vector2(LANE_X[lane_index], 1050.0)
+    lane_index = GameBalance.PLAYER_START_LANE
+    position = Vector2(GameBalance.LANE_X[lane_index], GameBalance.PLAYER_Y)
     scale = Vector2.ONE
     rotation = 0.0
     modulate = Color.WHITE
@@ -42,7 +39,7 @@ func switch_lane() -> void:
 
     lane_index = 1 - lane_index
     var old_x: float = position.x
-    var target_x: float = LANE_X[lane_index]
+    var target_x: float = GameBalance.LANE_X[lane_index]
     trail_direction = signf(target_x - old_x)
 
     if move_tween and move_tween.is_running():
@@ -51,7 +48,7 @@ func switch_lane() -> void:
     move_tween = create_tween()
     move_tween.set_trans(Tween.TRANS_BACK)
     move_tween.set_ease(Tween.EASE_OUT)
-    move_tween.tween_property(self, "position:x", target_x, MOVE_TIME)
+    move_tween.tween_property(self, "position:x", target_x, GameBalance.PLAYER_SWITCH_TIME)
 
     var squash := create_tween()
     squash.tween_property(self, "scale", Vector2(1.24, 0.82), 0.055)

@@ -11,9 +11,9 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 2: Centralize Balance Values**
+**Foundation Phase — Step 3: Formalize Game-State Transitions**
 
-The runtime baseline is complete and documented in [`BASELINE_REPORT.md`](BASELINE_REPORT.md). The next implementation branch should centralize gameplay-critical tuning values without changing the current feel of the game.
+The balance-centralization milestone is complete and documented in [`BALANCE_REPORT.md`](BALANCE_REPORT.md). The next implementation branch should make state changes explicit, route primary input through one action handler, and guard transitions against overlap.
 
 ---
 
@@ -47,12 +47,15 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Confirm best-score persistence across a fresh scene instance.
   - [x] Record the finalized baseline report.
 
-- [ ] **Step 2 — Centralize balance values.** **Next**
-  - [ ] Add `scripts/config/game_balance.gd`.
-  - [ ] Move lane positions, player position, speeds, spawn timing, score values, and reaction timing into named constants.
-  - [ ] Preserve existing gameplay feel during the refactor.
+- [x] **Step 2 — Centralize balance values.**
+  - [x] Add `scripts/config/game_balance.gd`.
+  - [x] Move lane positions, player position, speeds, spawn timing, score values, and reaction timing into named constants.
+  - [x] Preserve existing gameplay feel during the refactor.
+  - [x] Add a canonical development version in `project.godot`.
+  - [x] Display the canonical version as a tiny top-left debug label.
+  - [x] Record the finalized balance-centralization report.
 
-- [ ] **Step 3 — Formalize game-state transitions.**
+- [ ] **Step 3 — Formalize game-state transitions.** **Next**
   - [ ] Add explicit ready, playing, and game-over entry methods.
   - [ ] Route input through a single primary-action handler.
   - [ ] Guard against duplicate collision and restart events.

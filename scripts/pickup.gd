@@ -1,7 +1,7 @@
 extends Area2D
 class_name EnergyPickup
 
-var speed := 650.0
+var speed := GameBalance.START_SPEED
 var life := 0.0
 var collected := false
 
@@ -11,7 +11,7 @@ func _process(delta: float) -> void:
         position.y += speed * delta
         rotation += delta * 2.4
         scale = Vector2.ONE * (1.0 + sin(life * 7.0) * 0.08)
-        if position.y > 1360.0:
+        if position.y > GameBalance.PICKUP_CLEANUP_Y:
             queue_free()
     queue_redraw()
 
