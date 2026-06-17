@@ -62,7 +62,9 @@ func switch_lane() -> void:
 
 func crash() -> void:
     active = false
-    monitoring = false
+    # Physics monitoring cannot be changed synchronously from an area-entered
+    # callback. Defer the property update so the current physics step can end.
+    set_deferred("monitoring", false)
     if move_tween and move_tween.is_running():
         move_tween.kill()
     var tween := create_tween()
