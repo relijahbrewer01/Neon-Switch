@@ -141,7 +141,10 @@ func _spawn_wave() -> void:
         world.add_child(pickup)
 
     # Later in a run, occasional staggered barriers create a quick two-tap rhythm.
-    if rng.randf() < GameBalance.followup_chance_at(elapsed):
+    if (
+        elapsed > GameBalance.FOLLOWUP_UNLOCK_TIME
+        and rng.randf() < GameBalance.followup_chance_at(elapsed)
+    ):
         var followup := OBSTACLE_SCENE.instantiate() as NeonObstacle
         followup.position = Vector2(
             GameBalance.LANE_X[1 - blocked_lane],
