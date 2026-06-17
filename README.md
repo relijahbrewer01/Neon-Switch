@@ -22,6 +22,8 @@ There are no external art dependencies. Every visual is drawn in code, and the s
 
 The project is configured for a 720×1280 portrait viewport and scales to different phone screens.
 
+A small version string appears in the top-left corner. It is read from `application/config/version` in `project.godot`, so screenshots and bug reports identify the exact build being tested.
+
 ## Android Export
 
 Godot's current Android export workflow requires OpenJDK 17 and the Android SDK. In Godot, configure both under **Editor Settings → Export → Android**, install the Android export templates, then create an Android preset under **Project → Export**.
@@ -45,42 +47,63 @@ Neon-Switch/
 ├── project.godot
 ├── icon.svg
 ├── README.md
+├── docs/
+│   ├── BASELINE_REPORT.md
+│   ├── FOUNDATION_PLAN.md
+│   └── ROADMAP.md
 ├── scenes/
 │   ├── main.tscn
 │   ├── obstacle.tscn
 │   ├── pickup.tscn
 │   └── player.tscn
-└── scripts/
-    ├── background.gd
-    ├── hud.gd
-    ├── main.gd
-    ├── obstacle.gd
-    ├── pickup.gd
-    └── player.gd
+├── scripts/
+│   ├── config/
+│   │   └── game_balance.gd
+│   ├── background.gd
+│   ├── hud.gd
+│   ├── main.gd
+│   ├── obstacle.gd
+│   ├── pickup.gd
+│   └── player.gd
+└── tests/
+    └── baseline_smoke_test.gd
 ```
 
 ## Architecture
 
-- `main.gd` owns the game state, spawning, difficulty curve, scoring, generated audio, and save data.
+- `game_balance.gd` is the central authority for gameplay-critical timing, positioning, scoring, speed, and spawn values.
+- `main.gd` owns game state, spawning orchestration, scoring, generated audio, and save data.
 - `player.gd` owns lane switching, collision signals, animation, and mobile vibration.
 - `obstacle.gd` and `pickup.gd` are lightweight moving entities.
 - `background.gd` draws and animates the entire playfield procedurally.
-- `hud.gd` constructs the responsive interface at runtime.
+- `hud.gd` constructs the responsive interface and debug version label at runtime.
 - Best score is stored locally through `ConfigFile` at `user://neon_switch_save.cfg`.
 
-## Easy Tuning Points
+## Balance and Tuning
 
-In `scripts/main.gd`:
+Gameplay-critical values now live in:
 
-- Starting speed: `current_speed = 650.0`
-- Maximum speed: `1120.0`
-- Starting spawn interval: `0.92`
-- Minimum spawn interval: `0.48`
-- Shard reward: `25.0`
+```text
+scripts/config/game_balance.gd
+```
 
-In `scripts/player.gd`:
+This includes:
 
-- Lane-switch duration: `MOVE_TIME = 0.115`
+- Lane positions and player start position
+- Lane-switch duration
+- Starting and maximum speed
+- Spawn-interval curve
+- Score-rate curve and pickup reward
+- Obstacle and pickup spawn/cleanup positions
+- Follow-up wave timing and probability
+- Restart and game-over timing
+- Minimum reaction-time policy for the later wave-director pass
+
+Change tuning values there rather than scattering new numeric literals through gameplay scripts.
+
+## Automated Validation
+
+GitHub Actions imports and parses the project with Godot 4.6.3, then runs `tests/baseline_smoke_test.gd`. The smoke test covers the core loop, input paths, collisions, restart stress, save persistence, centralized balance values, and displayed build version.
 
 ## License
 
