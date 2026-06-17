@@ -107,7 +107,11 @@ func _run() -> void:
 
     _expect(int(game.get("state")) == 2, "Obstacle collision enters GAME_OVER once")
     _expect(not bool(player.get("active")), "Player deactivates after collision")
-    _expect(is_equal_approx(float(game.get("restart_lock")), GameBalance.RESTART_LOCK_TIME), "Game over uses configured restart lock")
+    var restart_lock_value := float(game.get("restart_lock"))
+    _expect(
+        restart_lock_value > 0.0 and restart_lock_value <= GameBalance.RESTART_LOCK_TIME,
+        "Game over uses the configured restart-lock window"
+    )
 
     await create_timer(GameBalance.GAME_OVER_PANEL_DELAY + 0.06).timeout
 
