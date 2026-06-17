@@ -2,7 +2,6 @@ extends Node2D
 
 const OBSTACLE_SCENE := preload("res://scenes/obstacle.tscn")
 const PICKUP_SCENE := preload("res://scenes/pickup.tscn")
-const LANE_X: Array[float] = [210.0, 510.0]
 const SAVE_PATH := "user://neon_switch_save.cfg"
 
 enum GameState { READY, PLAYING, GAME_OVER }
@@ -20,8 +19,8 @@ var best_score := 0
 var shards := 0
 var elapsed := 0.0
 var spawn_clock := 0.0
-var current_speed := 650.0
-var spawn_interval := 0.92
+var current_speed := GameBalance.START_SPEED
+var spawn_interval := GameBalance.START_SPAWN_INTERVAL
 var restart_lock := 0.0
 var screen_shake := 0.0
 var sfx_switch: AudioStreamPlayer
@@ -44,7 +43,9 @@ func _process(delta: float) -> void:
 
     if screen_shake > 0.0:
         screen_shake -= delta
-        world.position = Vector2(rng.randf_range(-8.0, 8.0), rng.randf_range(-7.0, 7.0)) * (screen_shake / 0.25)
+        world.position = Vector2(rng.randf_range(-8.0, 8.0), rng.randf_range(-7.0, 7.0)) * (
+            screen_shake / GameBalance.SCREEN_SHAKE_DURATION
+        )
     else:
         world.position = Vector2.ZERO
 
@@ -52,10 +53,12 @@ func _process(delta: float) -> void:
         return
 
     elapsed += delta
-    score_float += delta * (11.0 + elapsed * 0.055)
-    current_speed = minf(1120.0, 650.0 + elapsed * 13.0)
-    spawn_interval = maxf(0.48, 0.92 - elapsed * 0.0075)
-    background.set_intensity(inverse_lerp(650.0, 1120.0, current_speed))
+    score_float += delta * GameBalance.score_rate_at(elapsed)
+    current_speed = GameBalance.speed_at(elapsed)
+    spawn_interval = GameBalance.spawn_interval_at(elapsed)
+    background.set_intensity(
+        inverse_lerp(GameBalance.START_SPEED, GameBalance.MAX_SPEED, current_speed)
+    )
 
     spawn_clock += delta
     if spawn_clock >= spawn_interval:
@@ -96,9 +99,9 @@ func _start_game() -> void:
     displayed_score = 0
     shards = 0
     elapsed = 0.0
-    spawn_clock = 0.25
-    current_speed = 650.0
-    spawn_interval = 0.92
+    spawn_clock = GameBalance.INITIAL_SPAWN_CLOCK
+    current_speed = GameBalance.START_SPEED
+    spawn_interval = GameBalance.START_SPAWN_INTERVAL
     state = GameState.PLAYING
     player.reset_player()
     player.set_active(true)
@@ -115,23 +118,35 @@ func _reset_to_ready() -> void:
     hud.show_ready(best_score)
 
 func _spawn_wave() -> void:
-    var blocked_lane := rng.randi_range(0, 1)
+    var blocked_lane := rng.randi_range(0, GameBalance.LANE_X.size() - 1)
     var obstacle := OBSTACLE_SCENE.instantiate() as NeonObstacle
-    obstacle.position = Vector2(LANE_X[blocked_lane], -90.0)
+    obstacle.position = Vector2(
+        GameBalance.LANE_X[blocked_lane],
+        GameBalance.OBSTACLE_SPAWN_Y
+    )
     obstacle.speed = current_speed
     world.add_child(obstacle)
 
     # The collectible usually appears in the safe lane, creating a tiny risk/reward decision.
-    if rng.randf() < 0.64:
+    if rng.randf() < GameBalance.PICKUP_SPAWN_CHANCE:
         var pickup := PICKUP_SCENE.instantiate() as EnergyPickup
-        pickup.position = Vector2(LANE_X[1 - blocked_lane], -205.0 - rng.randf_range(0.0, 70.0))
+        pickup.position = Vector2(
+            GameBalance.LANE_X[1 - blocked_lane],
+            GameBalance.PICKUP_BASE_SPAWN_Y - rng.randf_range(
+                0.0,
+                GameBalance.PICKUP_EXTRA_OFFSET_MAX
+            )
+        )
         pickup.speed = current_speed
         world.add_child(pickup)
 
     # Later in a run, occasional staggered barriers create a quick two-tap rhythm.
-    if elapsed > 18.0 and rng.randf() < minf(0.28, elapsed / 180.0):
+    if rng.randf() < GameBalance.followup_chance_at(elapsed):
         var followup := OBSTACLE_SCENE.instantiate() as NeonObstacle
-        followup.position = Vector2(LANE_X[1 - blocked_lane], -90.0 - current_speed * 0.28)
+        followup.position = Vector2(
+            GameBalance.LANE_X[1 - blocked_lane],
+            GameBalance.OBSTACLE_SPAWN_Y - current_speed * GameBalance.FOLLOWUP_SPACING_SECONDS
+        )
         followup.speed = current_speed
         world.add_child(followup)
 
@@ -141,7 +156,7 @@ func _on_player_collect(pickup: EnergyPickup) -> void:
     pickup.collect()
     player.celebrate_pickup()
     shards += 1
-    score_float += 25.0
+    score_float += GameBalance.PICKUP_SCORE
     displayed_score = int(score_float)
     hud.update_stats(displayed_score, best_score, shards)
     hud.pulse_score()
@@ -157,8 +172,8 @@ func _on_player_hit(_obstacle: NeonObstacle) -> void:
 
     state = GameState.GAME_OVER
     player.crash()
-    screen_shake = 0.25
-    restart_lock = 0.48
+    screen_shake = GameBalance.SCREEN_SHAKE_DURATION
+    restart_lock = GameBalance.RESTART_LOCK_TIME
     sfx_crash.play()
     hud.flash_crash()
 
@@ -168,7 +183,7 @@ func _on_player_hit(_obstacle: NeonObstacle) -> void:
         _save_best_score()
 
     hud.update_stats(displayed_score, best_score, shards)
-    await get_tree().create_timer(0.34).timeout
+    await get_tree().create_timer(GameBalance.GAME_OVER_PANEL_DELAY).timeout
     hud.show_game_over(displayed_score, best_score, shards, displayed_score > old_best)
 
     if OS.has_feature("mobile"):
