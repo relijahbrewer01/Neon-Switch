@@ -3,8 +3,8 @@ extends SceneTree
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const OBSTACLE_SCENE_PATH := "res://scenes/obstacle.tscn"
 const PICKUP_SCENE_PATH := "res://scenes/pickup.tscn"
-const SAVE_PATH := "user://neon_switch_save.cfg"
-const EXPECTED_VERSION := "0.1.0-dev.5"
+const SAVE_PATH := SaveService.DEFAULT_SAVE_PATH
+const EXPECTED_VERSION := "0.1.0-dev.6"
 
 var failures: Array[String] = []
 
@@ -47,12 +47,18 @@ func _run() -> void:
     var player := game.get_node("World/Player") as NeonPlayer
     var world := game.get_node("World") as Node2D
     var hud = game.get_node("HUD/HUDRoot")
+    var save_service := game.get("save_service") as SaveService
 
     _expect(int(game.get("state")) == 0, "Game begins in READY state")
     _expect(not bool(game.get("state_transition_in_progress")), "Initial READY transition unlocks")
     _expect(int(game.get("best_score")) == 0, "Missing save defaults best score to zero")
     _expect(player != null and world != null and hud != null, "Required runtime nodes exist")
     _expect(game.get("wave_director") != null, "Main owns a WaveDirector service")
+    _expect(save_service != null, "Main owns a SaveService")
+    _expect(
+        save_service != null and save_service.last_load_status() == SaveService.LoadStatus.MISSING,
+        "Main receives missing-save status without failing startup"
+    )
     _expect(player.current_lane() == GameBalance.PLAYER_START_LANE, "Player begins in configured lane")
     _expect(not player.is_active(), "Player begins inactive in READY")
 
@@ -188,6 +194,7 @@ func _run() -> void:
     var panel = hud.get("panel")
     _expect(panel != null and not bool(panel.visible), "Stale game-over UI cannot cover a restarted run")
     _expect(int(game.get("best_score")) == 123, "A new best score is recorded")
+    _expect(save_service != null and save_service.best_score() == 123, "SaveService records the new best")
     _expect(FileAccess.file_exists(SAVE_PATH), "Best score creates a save file")
 
     game.queue_free()
@@ -200,6 +207,11 @@ func _run() -> void:
     await process_frame
 
     _expect(int(reloaded_game.get("best_score")) == 123, "Best score persists across a fresh scene")
+    var reloaded_service := reloaded_game.get("save_service") as SaveService
+    _expect(
+        reloaded_service != null and reloaded_service.last_load_status() == SaveService.LoadStatus.LOADED,
+        "Fresh game reports a valid loaded save"
+    )
 
     var reloaded_player := reloaded_game.get_node("World/Player") as NeonPlayer
     var reloaded_world := reloaded_game.get_node("World") as Node2D
