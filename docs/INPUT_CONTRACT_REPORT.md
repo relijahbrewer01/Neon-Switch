@@ -2,7 +2,7 @@
 
 ## Status
 
-**Foundation Step 7 is complete.**
+**Foundation Step 7 is complete and validated.**
 
 The playable build version is:
 
@@ -117,22 +117,24 @@ The existing gameplay baseline was also updated to call `_unhandled_input()` rat
 
 ## Result
 
-```text
-Project import and parsing: PENDING CI
-PrimaryInput registration: PENDING CI
-Accepted-event classification: PENDING CI
-Rejected-event filtering: PENDING CI
-HUD pass-through: PENDING CI
-Viewport delivery through ready panel: PENDING CI
-Touch, mouse, Space, Enter, keypad Enter: PENDING CI
-Existing gameplay regression: PENDING CI
-Version Guard: PENDING CI
-```
+Godot 4.6.3 validation completed successfully in workflow run **#104**. The Version Guard completed successfully in run **#12**.
 
-This report will be finalized after the pull-request workflows complete.
+```text
+Project import and parsing: PASS
+PrimaryInput registration: PASS
+Accepted-event classification: PASS
+Rejected-event filtering: PASS
+HUD pass-through: PASS
+Viewport delivery through ready panel: PASS
+Touch, mouse, Space, Enter, keypad Enter: PASS
+Existing gameplay regression: PASS
+Save-service regression: PASS
+Version Guard: PASS
+Godot runtime errors: NONE OBSERVED
+```
 
 ## Decision
 
-Once validation passes, input handling is ready to proceed to:
+Input handling is stable enough to proceed to:
 
 **Foundation Step 8 — Complete the Portrait UI and Safe-Area Pass**
