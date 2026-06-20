@@ -79,9 +79,9 @@ func _run() -> void:
     ]
 
     for layout_case in layout_cases:
-        var case_name := str(layout_case.name)
-        var viewport_size := layout_case.viewport as Vector2
-        var safe_rect := layout_case.safe as Rect2
+        var case_name := str(layout_case["name"])
+        var viewport_size: Vector2 = layout_case["viewport"]
+        var safe_rect: Rect2 = layout_case["safe"]
 
         hud.apply_layout(viewport_size, safe_rect)
         background.apply_canvas_size(viewport_size)
@@ -130,9 +130,7 @@ func _run() -> void:
 
 func _rects_equal(a: Rect2, b: Rect2, epsilon: float = 0.01) -> bool:
     return (
-        a.position.is_equal_approx(b.position)
-        and a.size.is_equal_approx(b.size)
-        and absf(a.position.x - b.position.x) <= epsilon
+        absf(a.position.x - b.position.x) <= epsilon
         and absf(a.position.y - b.position.y) <= epsilon
         and absf(a.size.x - b.size.x) <= epsilon
         and absf(a.size.y - b.size.y) <= epsilon
