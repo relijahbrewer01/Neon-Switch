@@ -33,6 +33,11 @@ var _pitch_rng := RandomNumberGenerator.new()
 var _noise_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+    initialize()
+
+func initialize() -> void:
+    if _built:
+        return
     _pitch_rng.seed = 94051
     _noise_rng.seed = 61417
     _haptics_supported = OS.has_feature("mobile")
