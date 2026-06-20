@@ -11,9 +11,9 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 8: Complete the Portrait UI and Safe-Area Pass**
+**Foundation Phase — Step 9: Finalize Audio and Haptic Contracts**
 
-The input-contract milestone is implemented and documented in [`INPUT_CONTRACT_REPORT.md`](INPUT_CONTRACT_REPORT.md). The next implementation branch should validate and adapt the interface across tall portrait aspect ratios, large scores, and mobile safe areas.
+The portrait UI and safe-area milestone is complete and documented in [`PORTRAIT_UI_REPORT.md`](PORTRAIT_UI_REPORT.md). The next implementation branch should formalize generated-audio reuse, feedback ownership, haptic behavior, and desktop-safe execution.
 
 Every playable update must increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
@@ -103,12 +103,18 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
 
 ### Presentation and Platform Readiness
 
-- [ ] **Step 8 — Complete the portrait UI and safe-area pass.** **Next**
-  - [ ] Test 9:16, 9:19.5, and 9:20 layouts.
-  - [ ] Verify six-digit scores fit.
-  - [ ] Verify panels remain visible on tall screens and cutout devices.
+- [x] **Step 8 — Complete the portrait UI and safe-area pass.**
+  - [x] Add `scripts/ui/portrait_layout.gd`.
+  - [x] Enable expanded portrait aspect scaling.
+  - [x] Map physical mobile safe areas into logical viewport coordinates.
+  - [x] Test 9:16, 9:19.5, and 9:20 layouts.
+  - [x] Verify six-digit score, best, and shard values fit.
+  - [x] Keep ready, game-over, and version UI inside simulated cutout-safe areas.
+  - [x] Extend the procedural background across tall logical viewports.
+  - [x] Add dedicated portrait-layout smoke tests.
+  - [x] Record the portrait UI report.
 
-- [ ] **Step 9 — Finalize audio and haptic contracts.**
+- [ ] **Step 9 — Finalize audio and haptic contracts.** **Next**
   - [ ] Reuse generated audio streams without allocations during play.
   - [ ] Verify switch, collect, start, and crash feedback.
   - [ ] Confirm desktop execution produces no haptic errors.
@@ -117,11 +123,13 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [ ] Add an F3 debug overlay.
   - [ ] Display game state, speed, spawn interval, elapsed time, lane, and active entity counts.
   - [ ] Add an optional deterministic RNG seed.
+  - [ ] Investigate and eliminate the baseline test-process ObjectDB teardown warning.
 
 - [ ] **Step 11 — Complete Android foundation validation.**
   - [ ] Create an Android debug export preset.
   - [ ] Export and install a debug APK.
   - [ ] Test orientation, touch, haptics, audio, suspend/resume, and UI margins on physical hardware.
+  - [ ] Verify camera cutouts and gesture-navigation safe areas on real devices.
 
 **Phase 1 exit condition:** The core loop is stable, fair, testable, and Android-ready without requiring architectural rewrites.
 
