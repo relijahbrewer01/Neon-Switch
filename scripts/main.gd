@@ -16,6 +16,7 @@ var state_transition_in_progress := false
 var state_transition_serial := 0
 
 var rng := RandomNumberGenerator.new()
+var wave_director := WaveDirector.new()
 var score_float := 0.0
 var displayed_score := 0
 var best_score := 0
@@ -35,9 +36,17 @@ func _ready() -> void:
     rng.randomize()
     _load_best_score()
     _build_audio_players()
-    player.hit_obstacle.connect(_on_player_hit)
-    player.collected_pickup.connect(_on_player_collect)
+    _connect_player_signals()
     _enter_ready_state(true)
+
+func _connect_player_signals() -> void:
+    var hit_callable := Callable(self, "_on_player_hit")
+    if not player.hit_obstacle.is_connected(hit_callable):
+        player.hit_obstacle.connect(hit_callable)
+
+    var pickup_callable := Callable(self, "_on_player_collect")
+    if not player.collected_pickup.is_connected(pickup_callable):
+        player.collected_pickup.connect(pickup_callable)
 
 func _process(delta: float) -> void:
     if restart_lock > 0.0:
@@ -107,8 +116,8 @@ func _handle_primary_action() -> void:
 func _request_lane_switch() -> void:
     if state != GameState.PLAYING or state_transition_in_progress:
         return
-    player.switch_lane()
-    sfx_switch.play()
+    if player.switch_lane():
+        sfx_switch.play()
 
 func _request_restart() -> void:
     if state != GameState.GAME_OVER:
@@ -123,7 +132,7 @@ func _enter_ready_state(force: bool = false) -> bool:
 
     _clear_spawned_objects()
     _reset_run_values()
-    player.reset_player()
+    player.reset_for_run()
     background.set_intensity(0.0)
     hud.show_ready(best_score)
     return true
@@ -139,8 +148,8 @@ func _enter_playing_state() -> bool:
     restart_lock = 0.0
     screen_shake = 0.0
     world.position = Vector2.ZERO
-    player.reset_player()
-    player.set_active(true)
+    player.reset_for_run()
+    player.activate()
     background.set_intensity(0.0)
     hud.show_playing()
     hud.update_stats(0, best_score, 0)
@@ -225,45 +234,41 @@ func _reset_run_values() -> void:
     spawn_interval = GameBalance.START_SPAWN_INTERVAL
 
 func _spawn_wave() -> void:
-    var blocked_lane := rng.randi_range(0, GameBalance.LANE_X.size() - 1)
-    var obstacle := OBSTACLE_SCENE.instantiate() as NeonObstacle
-    obstacle.position = Vector2(
-        GameBalance.LANE_X[blocked_lane],
-        GameBalance.OBSTACLE_SPAWN_Y
-    )
-    obstacle.speed = current_speed
-    world.add_child(obstacle)
+    var entries := wave_director.build_wave(elapsed, current_speed, rng)
 
-    # The collectible usually appears in the safe lane, creating a tiny risk/reward decision.
-    if rng.randf() < GameBalance.PICKUP_SPAWN_CHANCE:
-        var pickup := PICKUP_SCENE.instantiate() as EnergyPickup
-        pickup.position = Vector2(
-            GameBalance.LANE_X[1 - blocked_lane],
-            GameBalance.PICKUP_BASE_SPAWN_Y - rng.randf_range(
-                0.0,
-                GameBalance.PICKUP_EXTRA_OFFSET_MAX
+    for entry in entries:
+        var entry_type := str(entry.get("type", ""))
+        var lane := int(entry.get("lane", -1))
+        var offset_y := float(entry.get("offset_y", 0.0))
+
+        if lane < 0 or lane >= GameBalance.LANE_X.size():
+            push_error("WaveDirector returned an invalid lane index: %d" % lane)
+            continue
+
+        if entry_type == WaveDirector.ENTRY_OBSTACLE:
+            var obstacle := OBSTACLE_SCENE.instantiate() as NeonObstacle
+            obstacle.position = Vector2(
+                GameBalance.LANE_X[lane],
+                GameBalance.OBSTACLE_SPAWN_Y + offset_y
             )
-        )
-        pickup.speed = current_speed
-        world.add_child(pickup)
-
-    # Later in a run, occasional staggered barriers create a quick two-tap rhythm.
-    if (
-        elapsed > GameBalance.FOLLOWUP_UNLOCK_TIME
-        and rng.randf() < GameBalance.followup_chance_at(elapsed)
-    ):
-        var followup := OBSTACLE_SCENE.instantiate() as NeonObstacle
-        followup.position = Vector2(
-            GameBalance.LANE_X[1 - blocked_lane],
-            GameBalance.OBSTACLE_SPAWN_Y - current_speed * GameBalance.FOLLOWUP_SPACING_SECONDS
-        )
-        followup.speed = current_speed
-        world.add_child(followup)
+            obstacle.configure(current_speed)
+            world.add_child(obstacle)
+        elif entry_type == WaveDirector.ENTRY_PICKUP:
+            var pickup := PICKUP_SCENE.instantiate() as EnergyPickup
+            pickup.position = Vector2(
+                GameBalance.LANE_X[lane],
+                GameBalance.OBSTACLE_SPAWN_Y + offset_y
+            )
+            pickup.configure(current_speed)
+            world.add_child(pickup)
+        else:
+            push_error("WaveDirector returned an unknown entry type: %s" % entry_type)
 
 func _on_player_collect(pickup: EnergyPickup) -> void:
-    if state != GameState.PLAYING or pickup.collected:
+    if state != GameState.PLAYING:
         return
-    pickup.collect()
+    if not pickup.collect():
+        return
     player.celebrate_pickup()
     shards += 1
     score_float += GameBalance.PICKUP_SCORE
@@ -281,10 +286,13 @@ func _on_player_hit(_obstacle: NeonObstacle) -> void:
 
 func _clear_spawned_objects() -> void:
     for child in world.get_children():
-        if child != player:
-            if child is Area2D:
-                (child as Area2D).monitoring = false
-            world.remove_child(child)
+        if child == player:
+            continue
+        if child is NeonObstacle:
+            (child as NeonObstacle).despawn()
+        elif child is EnergyPickup:
+            (child as EnergyPickup).despawn()
+        else:
             child.queue_free()
 
 func _build_audio_players() -> void:
