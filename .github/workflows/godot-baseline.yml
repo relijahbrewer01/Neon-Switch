@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          "./${GODOT_BIN}" --headless --path . --script res://tests/baseline_smoke_test.gd 2>&1 | tee godot-baseline.log
+          "./${GODOT_BIN}" --verbose --headless --path . --script res://tests/baseline_smoke_test.gd 2>&1 | tee godot-baseline.log
 
       - name: Run save service smoke test
         shell: bash
