@@ -14,13 +14,13 @@ var top_bar: HBoxContainer
 
 func _ready() -> void:
     _build_ui()
+    _apply_input_passthrough(self)
     show_ready(0)
 
 func _build_ui() -> void:
     flash = ColorRect.new()
     flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     flash.color = Color(1.0, 0.2, 0.35, 0.0)
-    flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(flash)
 
     var margin := MarginContainer.new()
@@ -99,8 +99,32 @@ func _build_ui() -> void:
     version_label = _make_label("v%s" % app_version, 13, Color(0.52, 0.65, 0.78, 0.72), HORIZONTAL_ALIGNMENT_LEFT)
     version_label.position = Vector2(10.0, 5.0)
     version_label.size = Vector2(220.0, 20.0)
-    version_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(version_label)
+
+func _apply_input_passthrough(node: Node) -> void:
+    if node is Control:
+        var control := node as Control
+        control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        control.focus_mode = Control.FOCUS_NONE
+
+    for child in node.get_children():
+        _apply_input_passthrough(child)
+
+func is_input_passthrough() -> bool:
+    return _is_input_passthrough_recursive(self)
+
+func _is_input_passthrough_recursive(node: Node) -> bool:
+    if node is Control:
+        var control := node as Control
+        if control.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+            return false
+        if control.focus_mode != Control.FOCUS_NONE:
+            return false
+
+    for child in node.get_children():
+        if not _is_input_passthrough_recursive(child):
+            return false
+    return true
 
 func _make_label(text_value: String, font_size: int, color: Color, alignment: HorizontalAlignment) -> Label:
     var label := Label.new()
