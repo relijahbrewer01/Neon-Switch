@@ -35,6 +35,9 @@ var _noise_rng := RandomNumberGenerator.new()
 func _ready() -> void:
     initialize()
 
+func _exit_tree() -> void:
+    shutdown()
+
 func initialize() -> void:
     if _built:
         return
@@ -42,6 +45,21 @@ func initialize() -> void:
     _noise_rng.seed = 61417
     _haptics_supported = OS.has_feature("mobile")
     _build_resources()
+
+func shutdown() -> void:
+    # AudioServer may retain AudioStreamPlayback objects briefly after a player
+    # leaves the tree. Stop playback and detach streams explicitly so headless
+    # test processes and application shutdown release every playback resource.
+    for player_value in _players.values():
+        var audio_player := player_value as AudioStreamPlayer
+        if audio_player == null:
+            continue
+        audio_player.stop()
+        audio_player.stream = null
+
+    _streams.clear()
+    _players.clear()
+    _built = false
 
 func play_start() -> bool:
     return _play_feedback(FeedbackEvent.START, 1.0)
