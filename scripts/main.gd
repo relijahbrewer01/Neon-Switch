@@ -2,7 +2,6 @@ extends Node2D
 
 const OBSTACLE_SCENE := preload("res://scenes/obstacle.tscn")
 const PICKUP_SCENE := preload("res://scenes/pickup.tscn")
-const SAVE_PATH := "user://neon_switch_save.cfg"
 
 enum GameState { READY, PLAYING, GAME_OVER }
 
@@ -17,6 +16,7 @@ var state_transition_serial := 0
 
 var rng := RandomNumberGenerator.new()
 var wave_director := WaveDirector.new()
+var save_service := SaveService.new()
 var score_float := 0.0
 var displayed_score := 0
 var best_score := 0
@@ -34,7 +34,7 @@ var sfx_start: AudioStreamPlayer
 
 func _ready() -> void:
     rng.randomize()
-    _load_best_score()
+    best_score = save_service.load_best_score()
     _build_audio_players()
     _connect_player_signals()
     _enter_ready_state(true)
@@ -169,7 +169,9 @@ func _enter_game_over_state() -> bool:
     var old_best := best_score
     if displayed_score > best_score:
         best_score = displayed_score
-        _save_best_score()
+        # Disk failure must never roll back the in-memory record or interrupt
+        # the game-over flow. The service will retry on a later higher score.
+        save_service.save_if_new_best(best_score)
 
     hud.update_stats(displayed_score, best_score, shards)
 
@@ -349,13 +351,3 @@ func _make_wav(data: PackedByteArray, sample_rate: int) -> AudioStreamWAV:
     stream.stereo = false
     stream.data = data
     return stream
-
-func _load_best_score() -> void:
-    var config := ConfigFile.new()
-    if config.load(SAVE_PATH) == OK:
-        best_score = int(config.get_value("score", "best", 0))
-
-func _save_best_score() -> void:
-    var config := ConfigFile.new()
-    config.set_value("score", "best", best_score)
-    config.save(SAVE_PATH)
