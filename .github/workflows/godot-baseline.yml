@@ -69,13 +69,13 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          "./${GODOT_BIN}" --headless --path . --script res://tests/feedback_contract_smoke_test.gd 2>&1 | tee godot-feedback-contract.log
+          "./${GODOT_BIN}" --verbose --headless --path . --script res://tests/feedback_contract_smoke_test.gd 2>&1 | tee godot-feedback-contract.log
 
       - name: Run development diagnostics smoke test
         shell: bash
         run: |
           set -o pipefail
-          "./${GODOT_BIN}" --headless --path . --script res://tests/development_diagnostics_smoke_test.gd 2>&1 | tee godot-development-diagnostics.log
+          "./${GODOT_BIN}" --verbose --headless --path . --script res://tests/development_diagnostics_smoke_test.gd 2>&1 | tee godot-development-diagnostics.log
 
       - name: Reject ObjectDB teardown leaks
         shell: bash
