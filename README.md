@@ -65,6 +65,7 @@ Neon-Switch/
 │   ├── ENTITY_CONTRACTS_REPORT.md
 │   ├── FOUNDATION_PLAN.md
 │   ├── ROADMAP.md
+│   ├── SAVE_SERVICE_REPORT.md
 │   ├── STATE_TRANSITIONS_REPORT.md
 │   ├── VERSIONING.md
 │   └── WAVE_DIRECTOR_REPORT.md
@@ -77,6 +78,7 @@ Neon-Switch/
 │   ├── config/
 │   │   └── game_balance.gd
 │   ├── game/
+│   │   ├── save_service.gd
 │   │   └── wave_director.gd
 │   ├── background.gd
 │   ├── hud.gd
@@ -85,20 +87,39 @@ Neon-Switch/
 │   ├── pickup.gd
 │   └── player.gd
 └── tests/
-    └── baseline_smoke_test.gd
+    ├── baseline_smoke_test.gd
+    └── save_service_smoke_test.gd
 ```
 
 ## Architecture
 
 - `game_balance.gd` is the central authority for gameplay-critical timing, positioning, scoring, speed, and spawn values.
 - `wave_director.gd` builds tiered, mathematically validated wave definitions without instantiating scenes.
-- `main.gd` owns the guarded game-state machine, turns wave definitions into entities, tracks scoring, generates audio, and currently owns save data.
+- `save_service.gd` owns best-score file format, validation, load status, and new-record write policy.
+- `main.gd` owns the guarded game-state machine, turns wave definitions into entities, tracks scoring, generates audio, and delegates persistence to `SaveService`.
 - `player.gd` owns lane state, collision signals, player-only animation, and mobile vibration through a small public contract.
 - `obstacle.gd` owns hazard movement, configuration, offscreen retirement, and idempotent cleanup.
 - `pickup.gd` owns movement, one-time collection state, collection animation, and idempotent cleanup.
 - `background.gd` draws and animates the entire playfield procedurally.
 - `hud.gd` constructs the responsive interface and debug version label at runtime.
-- Best score is stored locally through `ConfigFile` at `user://neon_switch_save.cfg`.
+
+## Save Data
+
+Best score is stored through `SaveService` at:
+
+```text
+user://neon_switch_save.cfg
+```
+
+The service safely handles:
+
+- Missing save files
+- Malformed configuration files
+- Wrong-type score values
+- Negative stored scores
+- Equal or lower score attempts
+
+A missing or invalid save falls back to zero without blocking startup. Only a score greater than the currently loaded best is written. Disk failure does not roll back the in-memory record or interrupt game-over flow.
 
 ## Entity Contracts
 
@@ -144,7 +165,14 @@ Change tuning values there rather than scattering new numeric literals through g
 
 ## Automated Validation
 
-GitHub Actions imports and parses the project with Godot 4.6.3, then runs `tests/baseline_smoke_test.gd`. The smoke test covers the core loop, guarded state transitions, entity public contracts, idempotent collection and cleanup, stable signal connections, input paths, collisions, restart stress, save persistence, centralized balance values, tier boundaries, generated-wave fairness, and displayed build version.
+GitHub Actions imports and parses the project with Godot 4.6.3, then runs both smoke-test suites:
+
+```text
+res://tests/baseline_smoke_test.gd
+res://tests/save_service_smoke_test.gd
+```
+
+Coverage includes the core loop, guarded state transitions, entity public contracts, idempotent collection and cleanup, stable signal connections, input paths, collisions, restart stress, SaveService integration, missing/malformed/invalid persistence data, new-best-only writes, centralized balance values, tier boundaries, generated-wave fairness, and displayed build version.
 
 ## License
 
