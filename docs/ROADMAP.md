@@ -11,11 +11,11 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 4: Extract Wave Generation**
+**Foundation Phase — Step 6: Isolate Save Handling**
 
-The state-transition milestone is complete and documented in [`STATE_TRANSITIONS_REPORT.md`](STATE_TRANSITIONS_REPORT.md). The next implementation branch should move wave construction out of `main.gd`, define pattern tiers, and enforce the minimum reaction-time policy.
+The entity-contract milestone is implemented and documented in [`ENTITY_CONTRACTS_REPORT.md`](ENTITY_CONTRACTS_REPORT.md). The next implementation branch should move best-score persistence out of `main.gd` and into a resilient save service.
 
-Every playable update must also increment the build version according to [`VERSIONING.md`](VERSIONING.md).
+Every playable update must increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
 ---
 
@@ -65,19 +65,25 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Add mandatory version-bump policy and CI guard.
   - [x] Record the finalized state-transition report.
 
-- [ ] **Step 4 — Extract wave generation.** **Next**
-  - [ ] Add `scripts/game/wave_director.gd`.
-  - [ ] Define introductory, rhythm, and pressure pattern tiers.
-  - [ ] Enforce a mathematical minimum reaction window.
-  - [ ] Guarantee at least one valid survival route per wave.
+- [x] **Step 4 — Extract wave generation.**
+  - [x] Add `scripts/game/wave_director.gd`.
+  - [x] Define introductory, rhythm, and pressure pattern tiers.
+  - [x] Enforce a mathematical minimum reaction window.
+  - [x] Guarantee at least one valid survival route per wave.
+  - [x] Preserve the established random-call order.
+  - [x] Add generated-wave stress validation.
+  - [x] Record the wave-director report.
 
-- [ ] **Step 5 — Clarify entity contracts.**
-  - [ ] Confirm player ownership and signals.
-  - [ ] Confirm obstacle movement and cleanup responsibilities.
-  - [ ] Confirm pickup movement, collection, and cleanup responsibilities.
-  - [ ] Verify signal connections do not duplicate across restarts.
+- [x] **Step 5 — Clarify entity contracts.**
+  - [x] Confirm player ownership and signals.
+  - [x] Confirm obstacle movement and cleanup responsibilities.
+  - [x] Confirm pickup movement, collection, and cleanup responsibilities.
+  - [x] Verify signal connections do not duplicate across restarts.
+  - [x] Replace direct entity-field access with public methods.
+  - [x] Add idempotent entity cleanup and collection tests.
+  - [x] Record the entity-contract report.
 
-- [ ] **Step 6 — Isolate save handling.**
+- [ ] **Step 6 — Isolate save handling.** **Next**
   - [ ] Add `scripts/game/save_service.gd`.
   - [ ] Handle missing and malformed save data safely.
   - [ ] Save only when a new best score is achieved.
