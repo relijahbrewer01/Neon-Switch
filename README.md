@@ -43,15 +43,17 @@ Neon-Switch/
 ├── project.godot
 ├── README.md
 ├── docs/
+│   ├── FEEDBACK_CONTRACT_REPORT.md
 │   ├── FOUNDATION_PLAN.md
-│   ├── ROADMAP.md
 │   ├── INPUT_CONTRACT_REPORT.md
 │   ├── PORTRAIT_UI_REPORT.md
+│   ├── ROADMAP.md
 │   ├── SAVE_SERVICE_REPORT.md
 │   └── WAVE_DIRECTOR_REPORT.md
 ├── scenes/
 ├── scripts/
 │   ├── config/game_balance.gd
+│   ├── feedback/feedback_service.gd
 │   ├── game/save_service.gd
 │   ├── game/wave_director.gd
 │   ├── input/primary_input.gd
@@ -61,6 +63,7 @@ Neon-Switch/
 │   └── main.gd
 └── tests/
     ├── baseline_smoke_test.gd
+    ├── feedback_contract_smoke_test.gd
     ├── input_contract_smoke_test.gd
     ├── portrait_layout_smoke_test.gd
     └── save_service_smoke_test.gd
@@ -73,9 +76,23 @@ Neon-Switch/
 - `save_service.gd` owns best-score persistence.
 - `primary_input.gd` normalizes supported controls.
 - `portrait_layout.gd` maps mobile display safe areas into logical canvas coordinates.
-- `main.gd` coordinates game state, scoring, entities, audio, saves, and normalized input.
+- `feedback_service.gd` owns generated audio, event playback, pitch variation, and mobile vibration policy.
+- `main.gd` coordinates game state, scoring, entities, saves, normalized input, and semantic feedback events.
 - `background.gd` renders across the active logical viewport.
 - `hud.gd` builds the interface inside safe and content rectangles.
+
+## Audio and Haptics
+
+`NeonFeedback` builds four streams and four `AudioStreamPlayer` nodes once at startup:
+
+- Start
+- Switch
+- Collect
+- Crash
+
+Playback reuses those same objects. Collect pitch variation and crash-noise generation use feedback-owned random generators, so presentation cannot alter obstacle-wave randomness.
+
+Only the feedback service may call the platform vibration API. Desktop and headless builds safely ignore haptic requests, while mobile builds use short switch and collect pulses plus a stronger crash pulse.
 
 ## Portrait Layout
 
@@ -98,9 +115,10 @@ res://tests/baseline_smoke_test.gd
 res://tests/save_service_smoke_test.gd
 res://tests/input_contract_smoke_test.gd
 res://tests/portrait_layout_smoke_test.gd
+res://tests/feedback_contract_smoke_test.gd
 ```
 
-Coverage includes gameplay state, entity contracts, input routing, save resilience, restart stress, wave fairness, portrait geometry, safe-area containment, tall background coverage, and the displayed build version.
+Coverage includes the complete run loop, entity contracts, input routing, save resilience, restart stress, wave fairness, portrait geometry, safe-area containment, generated-audio reuse, feedback routing, RNG isolation, desktop haptic safety, and the displayed build version.
 
 ## License
 

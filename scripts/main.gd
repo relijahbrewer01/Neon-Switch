@@ -18,6 +18,7 @@ var last_primary_input_source: int = PrimaryInput.Source.NONE
 var rng := RandomNumberGenerator.new()
 var wave_director := WaveDirector.new()
 var save_service := SaveService.new()
+var feedback := NeonFeedback.new()
 var score_float := 0.0
 var displayed_score := 0
 var best_score := 0
@@ -28,15 +29,14 @@ var current_speed := GameBalance.START_SPEED
 var spawn_interval := GameBalance.START_SPAWN_INTERVAL
 var restart_lock := 0.0
 var screen_shake := 0.0
-var sfx_switch: AudioStreamPlayer
-var sfx_collect: AudioStreamPlayer
-var sfx_crash: AudioStreamPlayer
-var sfx_start: AudioStreamPlayer
 
 func _ready() -> void:
+    feedback.name = "Feedback"
+    add_child(feedback)
+    feedback.initialize()
+
     rng.randomize()
     best_score = save_service.load_best_score()
-    _build_audio_players()
     _connect_player_signals()
     _enter_ready_state(true)
 
@@ -110,7 +110,7 @@ func _request_lane_switch() -> void:
     if state != GameState.PLAYING or state_transition_in_progress:
         return
     if player.switch_lane():
-        sfx_switch.play()
+        feedback.play_switch()
 
 func _request_restart() -> void:
     if state != GameState.GAME_OVER:
@@ -146,7 +146,7 @@ func _enter_playing_state() -> bool:
     background.set_intensity(0.0)
     hud.show_playing()
     hud.update_stats(0, best_score, 0)
-    sfx_start.play()
+    feedback.play_start()
     return true
 
 func _enter_game_over_state() -> bool:
@@ -156,7 +156,7 @@ func _enter_game_over_state() -> bool:
     player.crash()
     screen_shake = GameBalance.SCREEN_SHAKE_DURATION
     restart_lock = GameBalance.RESTART_LOCK_TIME
-    sfx_crash.play()
+    feedback.play_crash()
     hud.flash_crash()
 
     var old_best := best_score
@@ -173,9 +173,6 @@ func _enter_game_over_state() -> bool:
         transition_serial,
         displayed_score > old_best
     )
-
-    if OS.has_feature("mobile"):
-        Input.vibrate_handheld(170)
     return true
 
 func _begin_state_transition(next_state: int, force: bool = false) -> bool:
@@ -271,10 +268,7 @@ func _on_player_collect(pickup: EnergyPickup) -> void:
     hud.update_stats(displayed_score, best_score, shards)
     hud.pulse_score()
     hud.flash_collect()
-    sfx_collect.pitch_scale = rng.randf_range(0.96, 1.08)
-    sfx_collect.play()
-    if OS.has_feature("mobile"):
-        Input.vibrate_handheld(28)
+    feedback.play_collect()
 
 func _on_player_hit(_obstacle: NeonObstacle) -> void:
     _enter_game_over_state()
@@ -289,58 +283,3 @@ func _clear_spawned_objects() -> void:
             (child as EnergyPickup).despawn()
         else:
             child.queue_free()
-
-func _build_audio_players() -> void:
-    # Generate tiny retro sound effects at runtime so the repository remains
-    # completely self-contained and avoids binary asset management.
-    sfx_switch = _make_audio_player(_make_tone(620.0, 0.075, 0.34, 180.0), -9.0)
-    sfx_collect = _make_audio_player(_make_tone(880.0, 0.16, 0.38, 520.0), -5.0)
-    sfx_crash = _make_audio_player(_make_noise_burst(0.24, 0.42), -3.0)
-    sfx_start = _make_audio_player(_make_tone(330.0, 0.22, 0.32, 440.0), -7.0)
-
-func _make_audio_player(stream: AudioStream, volume_db: float) -> AudioStreamPlayer:
-    var audio_player := AudioStreamPlayer.new()
-    audio_player.stream = stream
-    audio_player.volume_db = volume_db
-    add_child(audio_player)
-    return audio_player
-
-func _make_tone(start_hz: float, duration: float, amplitude: float, end_hz: float = -1.0) -> AudioStreamWAV:
-    var sample_rate := 22050
-    var sample_count := maxi(1, int(duration * sample_rate))
-    var data := PackedByteArray()
-    data.resize(sample_count * 2)
-    var phase := 0.0
-    var final_hz := start_hz if end_hz < 0.0 else end_hz
-
-    for i in sample_count:
-        var progress := float(i) / float(sample_count)
-        var frequency := lerpf(start_hz, final_hz, progress)
-        phase += TAU * frequency / float(sample_rate)
-        var envelope := sin(PI * progress)
-        var sample := int(clampf(sin(phase) * amplitude * envelope, -1.0, 1.0) * 32767.0)
-        data.encode_s16(i * 2, sample)
-
-    return _make_wav(data, sample_rate)
-
-func _make_noise_burst(duration: float, amplitude: float) -> AudioStreamWAV:
-    var sample_rate := 22050
-    var sample_count := maxi(1, int(duration * sample_rate))
-    var data := PackedByteArray()
-    data.resize(sample_count * 2)
-
-    for i in sample_count:
-        var progress := float(i) / float(sample_count)
-        var envelope := pow(1.0 - progress, 2.0)
-        var sample := int(rng.randf_range(-1.0, 1.0) * amplitude * envelope * 32767.0)
-        data.encode_s16(i * 2, sample)
-
-    return _make_wav(data, sample_rate)
-
-func _make_wav(data: PackedByteArray, sample_rate: int) -> AudioStreamWAV:
-    var stream := AudioStreamWAV.new()
-    stream.format = AudioStreamWAV.FORMAT_16_BITS
-    stream.mix_rate = sample_rate
-    stream.stereo = false
-    stream.data = data
-    return stream

@@ -11,9 +11,9 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 9: Finalize Audio and Haptic Contracts**
+**Foundation Phase — Step 10: Add Development Diagnostics**
 
-The portrait UI and safe-area milestone is complete and documented in [`PORTRAIT_UI_REPORT.md`](PORTRAIT_UI_REPORT.md). The next implementation branch should formalize generated-audio reuse, feedback ownership, haptic behavior, and desktop-safe execution.
+The audio and haptic feedback milestone is complete and documented in [`FEEDBACK_CONTRACT_REPORT.md`](FEEDBACK_CONTRACT_REPORT.md). The next implementation branch should add a toggleable runtime diagnostic overlay, deterministic testing controls, and cleanup visibility for development builds.
 
 Every playable update must increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
@@ -114,12 +114,17 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Add dedicated portrait-layout smoke tests.
   - [x] Record the portrait UI report.
 
-- [ ] **Step 9 — Finalize audio and haptic contracts.** **Next**
-  - [ ] Reuse generated audio streams without allocations during play.
-  - [ ] Verify switch, collect, start, and crash feedback.
-  - [ ] Confirm desktop execution produces no haptic errors.
+- [x] **Step 9 — Finalize audio and haptic contracts.**
+  - [x] Add `scripts/feedback/feedback_service.gd`.
+  - [x] Generate four reusable audio streams and players at startup.
+  - [x] Route start, switch, collect, and crash feedback through semantic methods.
+  - [x] Move platform vibration ownership out of gameplay entities.
+  - [x] Guard desktop and headless execution from vibration calls.
+  - [x] Separate feedback randomness from gameplay RNG.
+  - [x] Add dedicated feedback reuse and integration tests.
+  - [x] Record the audio and haptic feedback report.
 
-- [ ] **Step 10 — Add development diagnostics.**
+- [ ] **Step 10 — Add development diagnostics.** **Next**
   - [ ] Add an F3 debug overlay.
   - [ ] Display game state, speed, spawn interval, elapsed time, lane, and active entity counts.
   - [ ] Add an optional deterministic RNG seed.
