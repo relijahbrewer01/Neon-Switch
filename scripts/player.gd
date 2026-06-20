@@ -3,9 +3,9 @@ class_name NeonPlayer
 
 ## Persistent player entity.
 ##
-## The player owns lane state, collision sensing, player-only animation, and
-## haptic feedback. It reports contacts through signals but never changes score,
-## game state, spawn timing, or save data.
+## The player owns lane state, collision sensing, and player-only animation. It
+## reports contacts through signals but never changes score, game state, spawn
+## timing, save data, audio, or platform haptics.
 
 signal hit_obstacle(obstacle: NeonObstacle)
 signal collected_pickup(pickup: EnergyPickup)
@@ -82,9 +82,6 @@ func switch_lane() -> bool:
     )
 
     _start_scale_feedback(Vector2(1.24, 0.82), 0.055, 0.09)
-
-    if OS.has_feature("mobile"):
-        Input.vibrate_handheld(18)
     return true
 
 func crash() -> bool:
