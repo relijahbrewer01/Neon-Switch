@@ -59,6 +59,12 @@ jobs:
           set -o pipefail
           "./${GODOT_BIN}" --headless --path . --script res://tests/input_contract_smoke_test.gd 2>&1 | tee godot-input-contract.log
 
+      - name: Run portrait layout smoke test
+        shell: bash
+        run: |
+          set -o pipefail
+          "./${GODOT_BIN}" --headless --path . --script res://tests/portrait_layout_smoke_test.gd 2>&1 | tee godot-portrait-layout.log
+
       - name: Upload validation logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -69,5 +75,6 @@ jobs:
             godot-baseline.log
             godot-save-service.log
             godot-input-contract.log
+            godot-portrait-layout.log
           if-no-files-found: warn
           retention-days: 7
