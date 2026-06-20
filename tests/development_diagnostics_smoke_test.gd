@@ -37,6 +37,7 @@ func _run() -> void:
     var player := game.get_node("World/Player") as NeonPlayer
     var world := game.get_node("World") as Node2D
     var panel_timer := game.get("game_over_panel_timer") as Timer
+    var feedback := game.get("feedback") as NeonFeedback
 
     _expect(overlay != null, "Main owns a diagnostics overlay")
     _expect(overlay != null and not overlay.is_open(), "Diagnostics begin hidden")
@@ -113,6 +114,9 @@ func _run() -> void:
     await process_frame
     _expect(not overlay.is_open(), "F3 closes diagnostics")
 
+    feedback.shutdown()
+    await process_frame
+    await process_frame
     game.queue_free()
     await process_frame
     await process_frame
