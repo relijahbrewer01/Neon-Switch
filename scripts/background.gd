@@ -38,13 +38,15 @@ func set_intensity(value: float) -> void:
 func canvas_size() -> Vector2:
     return _canvas_size
 
-func _refresh_canvas_size() -> void:
-    var viewport_size := get_viewport_rect().size
+func apply_canvas_size(viewport_size: Vector2) -> void:
     if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
         viewport_size = GameBalance.VIEWPORT_SIZE
     _canvas_size = viewport_size
     drift = fmod(drift, _canvas_size.y)
     queue_redraw()
+
+func _refresh_canvas_size() -> void:
+    apply_canvas_size(get_viewport_rect().size)
 
 func _draw() -> void:
     var width := _canvas_size.x
