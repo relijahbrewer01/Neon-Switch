@@ -62,10 +62,12 @@ Neon-Switch/
 ├── docs/
 │   ├── BALANCE_REPORT.md
 │   ├── BASELINE_REPORT.md
+│   ├── ENTITY_CONTRACTS_REPORT.md
 │   ├── FOUNDATION_PLAN.md
 │   ├── ROADMAP.md
 │   ├── STATE_TRANSITIONS_REPORT.md
-│   └── VERSIONING.md
+│   ├── VERSIONING.md
+│   └── WAVE_DIRECTOR_REPORT.md
 ├── scenes/
 │   ├── main.tscn
 │   ├── obstacle.tscn
@@ -74,6 +76,8 @@ Neon-Switch/
 ├── scripts/
 │   ├── config/
 │   │   └── game_balance.gd
+│   ├── game/
+│   │   └── wave_director.gd
 │   ├── background.gd
 │   ├── hud.gd
 │   ├── main.gd
@@ -87,16 +91,38 @@ Neon-Switch/
 ## Architecture
 
 - `game_balance.gd` is the central authority for gameplay-critical timing, positioning, scoring, speed, and spawn values.
-- `main.gd` owns the guarded game-state machine, spawning orchestration, scoring, generated audio, and save data.
-- `player.gd` owns lane switching, collision signals, animation, and mobile vibration.
-- `obstacle.gd` and `pickup.gd` are lightweight moving entities.
+- `wave_director.gd` builds tiered, mathematically validated wave definitions without instantiating scenes.
+- `main.gd` owns the guarded game-state machine, turns wave definitions into entities, tracks scoring, generates audio, and currently owns save data.
+- `player.gd` owns lane state, collision signals, player-only animation, and mobile vibration through a small public contract.
+- `obstacle.gd` owns hazard movement, configuration, offscreen retirement, and idempotent cleanup.
+- `pickup.gd` owns movement, one-time collection state, collection animation, and idempotent cleanup.
 - `background.gd` draws and animates the entire playfield procedurally.
 - `hud.gd` constructs the responsive interface and debug version label at runtime.
 - Best score is stored locally through `ConfigFile` at `user://neon_switch_save.cfg`.
 
+## Entity Contracts
+
+Gameplay entities expose narrow public APIs rather than allowing the game controller to edit their internal state directly.
+
+- Player: `reset_for_run()`, `activate()`, `switch_lane()`, `crash()`, and read-only state methods.
+- Obstacle: `configure()`, `movement_speed()`, `despawn()`, and `is_despawned()`.
+- Pickup: `configure()`, `collect()`, `despawn()`, and read-only collection/lifecycle methods.
+
+Main coordinates scoring and state. Each entity owns its movement, feedback, collision shutdown, and final cleanup.
+
+## Wave Fairness
+
+The director separates pattern choice from scene creation and validates every generated wave against the configured response window:
+
+```text
+PLAYER_SWITCH_TIME + MIN_REACTION_TIME
+```
+
+Introduction waves contain one obstacle. Rhythm and pressure tiers may add an opposite-lane follow-up only when vertical spacing provides enough travel time for a deliberate lane change. Simultaneous full-lane blocks and under-spaced lane changes are rejected.
+
 ## Balance and Tuning
 
-Gameplay-critical values now live in:
+Gameplay-critical values live in:
 
 ```text
 scripts/config/game_balance.gd
@@ -110,15 +136,15 @@ This includes:
 - Spawn-interval curve
 - Score-rate curve and pickup reward
 - Obstacle and pickup spawn/cleanup positions
-- Follow-up wave timing and probability
+- Wave-tier timing and follow-up probability
 - Restart and game-over timing
-- Minimum reaction-time policy for the later wave-director pass
+- Minimum reaction-time policy
 
 Change tuning values there rather than scattering new numeric literals through gameplay scripts.
 
 ## Automated Validation
 
-GitHub Actions imports and parses the project with Godot 4.6.3, then runs `tests/baseline_smoke_test.gd`. The smoke test covers the core loop, guarded state transitions, input paths, collisions, restart stress, save persistence, centralized balance values, and displayed build version.
+GitHub Actions imports and parses the project with Godot 4.6.3, then runs `tests/baseline_smoke_test.gd`. The smoke test covers the core loop, guarded state transitions, entity public contracts, idempotent collection and cleanup, stable signal connections, input paths, collisions, restart stress, save persistence, centralized balance values, tier boundaries, generated-wave fairness, and displayed build version.
 
 ## License
 
