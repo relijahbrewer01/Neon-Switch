@@ -2,6 +2,8 @@ extends Node2D
 
 const OBSTACLE_SCENE := preload("res://scenes/obstacle.tscn")
 const PICKUP_SCENE := preload("res://scenes/pickup.tscn")
+const DEBUG_SEED_SETTING := "debug/neon_switch/deterministic_seed"
+const DEBUG_SEED_ARGUMENT_PREFIX := "--seed="
 
 enum GameState { READY, PLAYING, GAME_OVER }
 
@@ -19,6 +21,11 @@ var rng := RandomNumberGenerator.new()
 var wave_director := WaveDirector.new()
 var save_service := SaveService.new()
 var feedback := NeonFeedback.new()
+var debug_overlay := NeonDebugOverlay.new()
+var game_over_panel_timer := Timer.new()
+var deterministic_seed := -1
+var pending_game_over_serial := -1
+var pending_game_over_is_new_best := false
 var score_float := 0.0
 var displayed_score := 0
 var best_score := 0
@@ -31,14 +38,34 @@ var restart_lock := 0.0
 var screen_shake := 0.0
 
 func _ready() -> void:
+    _build_feedback_service()
+    _build_game_over_timer()
+    _build_debug_overlay()
+    set_deterministic_seed(_resolve_requested_seed())
+
+    best_score = save_service.load_best_score()
+    _connect_player_signals()
+    _enter_ready_state(true)
+    _refresh_debug_overlay(true)
+
+func _build_feedback_service() -> void:
     feedback.name = "Feedback"
     add_child(feedback)
     feedback.initialize()
 
-    rng.randomize()
-    best_score = save_service.load_best_score()
-    _connect_player_signals()
-    _enter_ready_state(true)
+func _build_game_over_timer() -> void:
+    game_over_panel_timer.name = "GameOverPanelTimer"
+    game_over_panel_timer.one_shot = true
+    game_over_panel_timer.wait_time = GameBalance.GAME_OVER_PANEL_DELAY
+    add_child(game_over_panel_timer)
+
+    var timeout_callable := Callable(self, "_on_game_over_panel_timeout")
+    if not game_over_panel_timer.timeout.is_connected(timeout_callable):
+        game_over_panel_timer.timeout.connect(timeout_callable)
+
+func _build_debug_overlay() -> void:
+    debug_overlay.name = "DebugOverlay"
+    $HUD.add_child(debug_overlay)
 
 func _connect_player_signals() -> void:
     var hit_callable := Callable(self, "_on_player_hit")
@@ -61,28 +88,34 @@ func _process(delta: float) -> void:
     else:
         world.position = Vector2.ZERO
 
-    if state != GameState.PLAYING:
-        return
+    if state == GameState.PLAYING:
+        elapsed += delta
+        score_float += delta * GameBalance.score_rate_at(elapsed)
+        current_speed = GameBalance.speed_at(elapsed)
+        spawn_interval = GameBalance.spawn_interval_at(elapsed)
+        background.set_intensity(
+            inverse_lerp(GameBalance.START_SPEED, GameBalance.MAX_SPEED, current_speed)
+        )
 
-    elapsed += delta
-    score_float += delta * GameBalance.score_rate_at(elapsed)
-    current_speed = GameBalance.speed_at(elapsed)
-    spawn_interval = GameBalance.spawn_interval_at(elapsed)
-    background.set_intensity(
-        inverse_lerp(GameBalance.START_SPEED, GameBalance.MAX_SPEED, current_speed)
-    )
+        spawn_clock += delta
+        if spawn_clock >= spawn_interval:
+            spawn_clock -= spawn_interval
+            _spawn_wave()
 
-    spawn_clock += delta
-    if spawn_clock >= spawn_interval:
-        spawn_clock -= spawn_interval
-        _spawn_wave()
+        var new_score := int(score_float)
+        if new_score != displayed_score:
+            displayed_score = new_score
+            hud.update_stats(displayed_score, best_score, shards)
 
-    var new_score := int(score_float)
-    if new_score != displayed_score:
-        displayed_score = new_score
-        hud.update_stats(displayed_score, best_score, shards)
+    _refresh_debug_overlay()
 
 func _unhandled_input(event: InputEvent) -> void:
+    if _is_debug_toggle_event(event):
+        debug_overlay.toggle()
+        _refresh_debug_overlay(true)
+        get_viewport().set_input_as_handled()
+        return
+
     var input_source := PrimaryInput.source_for(event)
     if input_source == PrimaryInput.Source.NONE:
         return
@@ -90,6 +123,12 @@ func _unhandled_input(event: InputEvent) -> void:
     last_primary_input_source = input_source
     get_viewport().set_input_as_handled()
     _handle_primary_action()
+
+func _is_debug_toggle_event(event: InputEvent) -> bool:
+    if event is not InputEventKey:
+        return false
+    var key := event as InputEventKey
+    return key.pressed and not key.echo and key.keycode == KEY_F3
 
 func _handle_primary_action() -> void:
     # A state change remains locked through the current frame. This prevents a
@@ -123,11 +162,13 @@ func _enter_ready_state(force: bool = false) -> bool:
     if not _begin_state_transition(GameState.READY, force):
         return false
 
+    _cancel_game_over_panel()
     _clear_spawned_objects()
     _reset_run_values()
     player.reset_for_run()
     background.set_intensity(0.0)
     hud.show_ready(best_score)
+    _refresh_debug_overlay(true)
     return true
 
 func _enter_playing_state() -> bool:
@@ -136,6 +177,8 @@ func _enter_playing_state() -> bool:
     if not _begin_state_transition(GameState.PLAYING):
         return false
 
+    _cancel_game_over_panel()
+    _prepare_run_rng()
     _clear_spawned_objects()
     _reset_run_values()
     restart_lock = 0.0
@@ -147,6 +190,7 @@ func _enter_playing_state() -> bool:
     hud.show_playing()
     hud.update_stats(0, best_score, 0)
     feedback.play_start()
+    _refresh_debug_overlay(true)
     return true
 
 func _enter_game_over_state() -> bool:
@@ -167,12 +211,10 @@ func _enter_game_over_state() -> bool:
         save_service.save_if_new_best(best_score)
 
     hud.update_stats(displayed_score, best_score, shards)
-
-    var transition_serial := state_transition_serial
-    _show_game_over_panel_after_delay(
-        transition_serial,
-        displayed_score > old_best
-    )
+    pending_game_over_serial = state_transition_serial
+    pending_game_over_is_new_best = displayed_score > old_best
+    game_over_panel_timer.start(GameBalance.GAME_OVER_PANEL_DELAY)
+    _refresh_debug_overlay(true)
     return true
 
 func _begin_state_transition(next_state: int, force: bool = false) -> bool:
@@ -201,20 +243,57 @@ func _is_transition_allowed(from_state: int, to_state: int) -> bool:
             return to_state == GameState.PLAYING
     return false
 
-func _show_game_over_panel_after_delay(
-    transition_serial: int,
-    is_new_best: bool
-) -> void:
-    await get_tree().create_timer(GameBalance.GAME_OVER_PANEL_DELAY).timeout
-
-    # Ignore an old delayed callback if another state transition has already
-    # happened. This prevents stale game-over UI from appearing over a new run.
+func _on_game_over_panel_timeout() -> void:
     if state != GameState.GAME_OVER:
         return
-    if transition_serial != state_transition_serial:
+    if pending_game_over_serial != state_transition_serial:
         return
 
-    hud.show_game_over(displayed_score, best_score, shards, is_new_best)
+    hud.show_game_over(
+        displayed_score,
+        best_score,
+        shards,
+        pending_game_over_is_new_best
+    )
+
+func _cancel_game_over_panel() -> void:
+    game_over_panel_timer.stop()
+    pending_game_over_serial = -1
+    pending_game_over_is_new_best = false
+
+func set_deterministic_seed(seed: int) -> void:
+    deterministic_seed = seed if seed >= 0 else -1
+    if deterministic_seed >= 0:
+        rng.seed = deterministic_seed
+    else:
+        rng.randomize()
+    _refresh_debug_overlay(true)
+
+func uses_deterministic_seed() -> bool:
+    return deterministic_seed >= 0
+
+func deterministic_seed_value() -> int:
+    return deterministic_seed
+
+func _prepare_run_rng() -> void:
+    if deterministic_seed >= 0:
+        rng.seed = deterministic_seed
+
+func _resolve_requested_seed() -> int:
+    var requested_seed := int(ProjectSettings.get_setting(DEBUG_SEED_SETTING, -1))
+
+    for argument in OS.get_cmdline_user_args():
+        if not argument.begins_with(DEBUG_SEED_ARGUMENT_PREFIX):
+            continue
+        var value := argument.trim_prefix(DEBUG_SEED_ARGUMENT_PREFIX)
+        if value.to_lower() == "random":
+            requested_seed = -1
+        elif value.is_valid_int():
+            requested_seed = int(value)
+        else:
+            push_warning("Ignoring invalid Neon Switch seed argument: %s" % argument)
+
+    return requested_seed
 
 func _reset_run_values() -> void:
     score_float = 0.0
@@ -283,3 +362,43 @@ func _clear_spawned_objects() -> void:
             (child as EnergyPickup).despawn()
         else:
             child.queue_free()
+
+func debug_snapshot() -> Dictionary:
+    var obstacle_count := 0
+    var pickup_count := 0
+
+    for child in world.get_children():
+        if child is NeonObstacle:
+            obstacle_count += 1
+        elif child is EnergyPickup:
+            pickup_count += 1
+
+    return {
+        "state": _state_name(state),
+        "deterministic": uses_deterministic_seed(),
+        "seed": deterministic_seed,
+        "speed": current_speed,
+        "spawn_interval": spawn_interval,
+        "elapsed": elapsed,
+        "lane": player.current_lane(),
+        "obstacles": obstacle_count,
+        "pickups": pickup_count,
+        "entities": obstacle_count + pickup_count,
+        "input": PrimaryInput.source_name(last_primary_input_source),
+    }
+
+func _refresh_debug_overlay(force: bool = false) -> void:
+    if not force and not debug_overlay.is_open():
+        return
+    debug_overlay.apply_safe_rect(hud.current_safe_rect())
+    debug_overlay.update_snapshot(debug_snapshot())
+
+func _state_name(state_value: int) -> String:
+    match state_value:
+        GameState.READY:
+            return "READY"
+        GameState.PLAYING:
+            return "PLAYING"
+        GameState.GAME_OVER:
+            return "GAME_OVER"
+    return "UNKNOWN"
