@@ -1,37 +1,90 @@
 extends Area2D
 class_name EnergyPickup
 
-var speed := GameBalance.START_SPEED
-var life := 0.0
-var collected := false
+## Moving collectible entity.
+##
+## Pickups own movement, one-time collection state, collection animation, and
+## idempotent cleanup. They report no score and know nothing about the HUD.
 
-func _process(delta: float) -> void:
-    life += delta
-    if not collected:
-        position.y += speed * delta
-        rotation += delta * 2.4
-        scale = Vector2.ONE * (1.0 + sin(life * 7.0) * 0.08)
-        if position.y > GameBalance.PICKUP_CLEANUP_Y:
-            queue_free()
-    queue_redraw()
+var _speed := GameBalance.START_SPEED
+var _life := 0.0
+var _collected := false
+var _despawned := false
+var _collection_tween: Tween
 
-func collect() -> void:
-    if collected:
-        return
-    collected = true
-    # Collection is triggered from a physics overlap callback, so collision
-    # state changes must wait until the current physics step has completed.
+func configure(move_speed: float) -> bool:
+    if _despawned:
+        return false
+    _speed = maxf(0.0, move_speed)
+    return true
+
+func movement_speed() -> float:
+    return _speed
+
+func is_collected() -> bool:
+    return _collected
+
+func is_despawned() -> bool:
+    return _despawned
+
+func collect() -> bool:
+    if _collected or _despawned:
+        return false
+
+    _collected = true
+    # Collection begins inside an overlap callback, so collision-state changes
+    # wait until the current physics query has completed.
+    set_deferred("collision_layer", 0)
+    set_deferred("collision_mask", 0)
     set_deferred("monitoring", false)
     set_deferred("monitorable", false)
-    var tween := create_tween()
-    tween.set_parallel(true)
-    tween.tween_property(self, "scale", Vector2(2.1, 2.1), 0.16).set_trans(Tween.TRANS_BACK)
-    tween.tween_property(self, "modulate:a", 0.0, 0.16)
-    tween.tween_property(self, "rotation", rotation + PI, 0.16)
-    tween.chain().tween_callback(queue_free)
+
+    _collection_tween = create_tween()
+    _collection_tween.set_parallel(true)
+    _collection_tween.tween_property(self, "scale", Vector2(2.1, 2.1), 0.16).set_trans(Tween.TRANS_BACK)
+    _collection_tween.tween_property(self, "modulate:a", 0.0, 0.16)
+    _collection_tween.tween_property(self, "rotation", rotation + PI, 0.16)
+    _collection_tween.chain().tween_callback(_finish_collection)
+    return true
+
+func despawn() -> bool:
+    if _despawned:
+        return false
+
+    _despawned = true
+    set_process(false)
+    visible = false
+    collision_layer = 0
+    collision_mask = 0
+    set_deferred("monitoring", false)
+    set_deferred("monitorable", false)
+
+    if _collection_tween and _collection_tween.is_running():
+        _collection_tween.kill()
+    _collection_tween = null
+
+    queue_free()
+    return true
+
+func _finish_collection() -> void:
+    _collection_tween = null
+    despawn()
+
+func _process(delta: float) -> void:
+    if _despawned:
+        return
+
+    _life += delta
+    if not _collected:
+        position.y += _speed * delta
+        rotation += delta * 2.4
+        scale = Vector2.ONE * (1.0 + sin(_life * 7.0) * 0.08)
+        if position.y > GameBalance.PICKUP_CLEANUP_Y:
+            despawn()
+    queue_redraw()
 
 func _draw() -> void:
-    var glow := 0.5 + (sin(life * 8.0) + 1.0) * 0.25
+    var glow := 0.5 + (sin(_life * 8.0) + 1.0) * 0.25
     draw_circle(Vector2.ZERO, 42.0, Color(0.30, 1.0, 0.76, 0.07 + glow * 0.06))
 
     var outer := PackedVector2Array()
