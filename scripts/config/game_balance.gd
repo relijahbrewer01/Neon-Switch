@@ -33,14 +33,18 @@ const PICKUP_EXTRA_OFFSET_MAX := 70.0
 const PICKUP_CLEANUP_Y := 1360.0
 const PICKUP_SPAWN_CHANCE := 0.64
 
+# Wave tiers:
+# - Introduction: one readable obstacle and optional pickup.
+# - Rhythm: staggered opposite-lane follow-ups begin appearing.
+# - Pressure: the follow-up probability has reached its configured ceiling.
 const FOLLOWUP_UNLOCK_TIME := 18.0
 const FOLLOWUP_MAX_CHANCE := 0.28
 const FOLLOWUP_CHANCE_RAMP_SECONDS := 180.0
+const PRESSURE_TIER_START_TIME := 50.4
 const FOLLOWUP_SPACING_SECONDS := 0.28
 
-# Step 4 will use this value to reject impossible wave patterns. It is defined
-# now so reaction-time policy has one owner, but the current wave generator is
-# intentionally unchanged during the balance-centralization refactor.
+# The director rejects any lane-changing hazard sequence that provides less
+# than switch animation time plus this deliberate human response window.
 const MIN_REACTION_TIME := 0.32
 
 const RESTART_LOCK_TIME := 0.48
