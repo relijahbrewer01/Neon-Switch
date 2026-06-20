@@ -11,9 +11,9 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 6: Isolate Save Handling**
+**Foundation Phase — Step 7: Unify Input Behavior**
 
-The entity-contract milestone is implemented and documented in [`ENTITY_CONTRACTS_REPORT.md`](ENTITY_CONTRACTS_REPORT.md). The next implementation branch should move best-score persistence out of `main.gd` and into a resilient save service.
+The save-service milestone is implemented and documented in [`SAVE_SERVICE_REPORT.md`](SAVE_SERVICE_REPORT.md). The next implementation branch should finish the input contract by verifying every supported input path, release/repeat filtering, and UI pass-through behavior.
 
 Every playable update must increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
@@ -83,12 +83,16 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Add idempotent entity cleanup and collection tests.
   - [x] Record the entity-contract report.
 
-- [ ] **Step 6 — Isolate save handling.** **Next**
-  - [ ] Add `scripts/game/save_service.gd`.
-  - [ ] Handle missing and malformed save data safely.
-  - [ ] Save only when a new best score is achieved.
+- [x] **Step 6 — Isolate save handling.**
+  - [x] Add `scripts/game/save_service.gd`.
+  - [x] Handle missing and malformed save data safely.
+  - [x] Reject wrong-type and negative stored score values.
+  - [x] Save only when a new best score is achieved.
+  - [x] Keep disk failures separate from in-memory gameplay state.
+  - [x] Add dedicated persistence smoke tests.
+  - [x] Record the save-service report.
 
-- [ ] **Step 7 — Unify input behavior.**
+- [ ] **Step 7 — Unify input behavior.** **Next**
   - [ ] Verify touch, mouse, Space, and Enter use the same action path.
   - [ ] Ignore repeat and release events.
   - [ ] Ensure decorative UI never consumes gameplay taps.
