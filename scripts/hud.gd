@@ -8,13 +8,26 @@ var shard_label: Label
 var title_label: Label
 var subtitle_label: Label
 var hint_label: Label
+var footer_label: Label
 var panel: PanelContainer
 var flash: ColorRect
 var top_bar: HBoxContainer
+var safe_container: MarginContainer
+var layout: VBoxContainer
+
+var _safe_rect := Rect2(Vector2.ZERO, PortraitLayout.DESIGN_SIZE)
+var _content_rect := Rect2(Vector2.ZERO, PortraitLayout.DESIGN_SIZE)
 
 func _ready() -> void:
     _build_ui()
     _apply_input_passthrough(self)
+
+    var viewport := get_viewport()
+    var resize_callable := Callable(self, "_refresh_layout")
+    if viewport and not viewport.size_changed.is_connected(resize_callable):
+        viewport.size_changed.connect(resize_callable)
+
+    _refresh_layout()
     show_ready(0)
 
 func _build_ui() -> void:
@@ -23,32 +36,32 @@ func _build_ui() -> void:
     flash.color = Color(1.0, 0.2, 0.35, 0.0)
     add_child(flash)
 
-    var margin := MarginContainer.new()
-    margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    margin.add_theme_constant_override("margin_left", 34)
-    margin.add_theme_constant_override("margin_top", 26)
-    margin.add_theme_constant_override("margin_right", 34)
-    margin.add_theme_constant_override("margin_bottom", 28)
-    add_child(margin)
+    safe_container = MarginContainer.new()
+    safe_container.set_anchors_preset(Control.PRESET_TOP_LEFT)
+    add_child(safe_container)
 
-    var layout := VBoxContainer.new()
+    layout = VBoxContainer.new()
+    layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    margin.add_child(layout)
+    safe_container.add_child(layout)
 
     top_bar = HBoxContainer.new()
     top_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+    top_bar.add_theme_constant_override("separation", 10)
     layout.add_child(top_bar)
 
-    score_label = _make_label("0", 54, Color("f4fbff"), HORIZONTAL_ALIGNMENT_LEFT)
+    score_label = _make_label("0", 50, Color("f4fbff"), HORIZONTAL_ALIGNMENT_LEFT)
     score_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    score_label.custom_minimum_size.x = 150.0
     top_bar.add_child(score_label)
 
-    shard_label = _make_label("◆ 0", 26, Color("65f7c3"), HORIZONTAL_ALIGNMENT_CENTER)
-    shard_label.custom_minimum_size.x = 150.0
+    shard_label = _make_label("◆ 0", 24, Color("65f7c3"), HORIZONTAL_ALIGNMENT_CENTER)
+    shard_label.custom_minimum_size.x = 136.0
     top_bar.add_child(shard_label)
 
-    best_label = _make_label("BEST 0", 25, Color("8db3d9"), HORIZONTAL_ALIGNMENT_RIGHT)
+    best_label = _make_label("BEST 0", 23, Color("8db3d9"), HORIZONTAL_ALIGNMENT_RIGHT)
     best_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    best_label.custom_minimum_size.x = 170.0
     top_bar.add_child(best_label)
 
     var spacer := Control.new()
@@ -90,16 +103,60 @@ func _build_ui() -> void:
     hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     panel_box.add_child(hint_label)
 
-    var footer := _make_label("SPACE / CLICK ALSO WORKS", 18, Color(0.52, 0.65, 0.78, 0.78), HORIZONTAL_ALIGNMENT_CENTER)
-    layout.add_child(footer)
+    footer_label = _make_label("SPACE / CLICK / ENTER ALSO WORK", 17, Color(0.52, 0.65, 0.78, 0.78), HORIZONTAL_ALIGNMENT_CENTER)
+    layout.add_child(footer_label)
 
     # Read the canonical build version from project.godot so screenshots and
     # bug reports identify the exact build without duplicating version strings.
     var app_version := str(ProjectSettings.get_setting("application/config/version", "0.0.0-dev"))
     version_label = _make_label("v%s" % app_version, 13, Color(0.52, 0.65, 0.78, 0.72), HORIZONTAL_ALIGNMENT_LEFT)
-    version_label.position = Vector2(10.0, 5.0)
-    version_label.size = Vector2(220.0, 20.0)
     add_child(version_label)
+
+func _refresh_layout() -> void:
+    var viewport_size := get_viewport_rect().size
+    var safe_rect := PortraitLayout.runtime_safe_rect(viewport_size)
+    apply_layout(viewport_size, safe_rect)
+
+func apply_layout(viewport_size: Vector2, safe_rect: Rect2) -> void:
+    _safe_rect = PortraitLayout.clamp_rect_to_viewport(safe_rect, viewport_size)
+    _content_rect = PortraitLayout.content_rect(_safe_rect)
+
+    safe_container.position = _content_rect.position
+    safe_container.size = _content_rect.size
+
+    version_label.position = _safe_rect.position + Vector2(8.0, 4.0)
+    version_label.size = Vector2(minf(220.0, _safe_rect.size.x - 16.0), 20.0)
+
+    safe_container.queue_sort()
+    layout.queue_sort()
+    top_bar.queue_sort()
+
+func current_safe_rect() -> Rect2:
+    return _safe_rect
+
+func current_content_rect() -> Rect2:
+    return _content_rect
+
+func layout_is_inside_safe_area() -> bool:
+    if not PortraitLayout.contains_rect(_safe_rect, Rect2(safe_container.position, safe_container.size)):
+        return false
+    if not PortraitLayout.contains_rect(_safe_rect, version_label.get_global_rect()):
+        return false
+    if panel.visible and not PortraitLayout.contains_rect(_safe_rect, panel.get_global_rect()):
+        return false
+    return true
+
+func stats_fit_current_layout() -> bool:
+    var required_width := (
+        score_label.get_combined_minimum_size().x
+        + shard_label.get_combined_minimum_size().x
+        + best_label.get_combined_minimum_size().x
+        + float(top_bar.get_theme_constant("separation")) * 2.0
+    )
+    return (
+        required_width <= top_bar.size.x + 0.5
+        and top_bar.size.x <= _content_rect.size.x + 0.5
+    )
 
 func _apply_input_passthrough(node: Node) -> void:
     if node is Control:
