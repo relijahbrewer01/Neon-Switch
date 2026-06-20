@@ -167,6 +167,9 @@ func _run() -> void:
     _expect(save_service.best_score() == 123, "SaveService receives new best")
     _expect(FileAccess.file_exists(SAVE_PATH), "New best creates save file")
 
+    feedback.shutdown()
+    await process_frame
+    await process_frame
     game.queue_free()
     await process_frame
     await process_frame
@@ -179,6 +182,10 @@ func _run() -> void:
 
     await _validate_restart_stress(reloaded_game, obstacle_scene)
 
+    var reloaded_feedback := reloaded_game.get("feedback") as NeonFeedback
+    reloaded_feedback.shutdown()
+    await process_frame
+    await process_frame
     reloaded_game.queue_free()
     await process_frame
     await process_frame
