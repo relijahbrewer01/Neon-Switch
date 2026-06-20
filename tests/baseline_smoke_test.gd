@@ -4,7 +4,7 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const OBSTACLE_SCENE_PATH := "res://scenes/obstacle.tscn"
 const PICKUP_SCENE_PATH := "res://scenes/pickup.tscn"
 const SAVE_PATH := SaveService.DEFAULT_SAVE_PATH
-const EXPECTED_VERSION := "0.1.0-dev.6"
+const EXPECTED_VERSION := "0.1.0-dev.7"
 
 var failures: Array[String] = []
 
@@ -84,11 +84,11 @@ func _run() -> void:
         "Repeated signal setup does not duplicate pickup connections"
     )
 
-    game.call("_input", _make_key_event(KEY_SPACE))
+    game.call("_unhandled_input", _make_key_event(KEY_SPACE))
     _expect(int(game.get("state")) == 1, "Space begins a run")
     _expect(player.is_active(), "Player activates when a run starts")
 
-    game.call("_input", _make_mouse_event())
+    game.call("_unhandled_input", _make_mouse_event())
     _expect(
         player.current_lane() == GameBalance.PLAYER_START_LANE,
         "Same-frame duplicate input cannot switch immediately after starting"
@@ -130,11 +130,11 @@ func _run() -> void:
     await process_frame
     _expect(world.get_child_count() == 1, "Entity-owned cleanup leaves only the player")
 
-    game.call("_input", _make_mouse_event())
+    game.call("_unhandled_input", _make_mouse_event())
     await create_timer(GameBalance.PLAYER_SWITCH_TIME + 0.09).timeout
     _expect(player.current_lane() == 1, "Mouse input switches exactly one lane")
 
-    game.call("_input", _make_touch_event())
+    game.call("_unhandled_input", _make_touch_event())
     await create_timer(GameBalance.PLAYER_SWITCH_TIME + 0.09).timeout
     _expect(player.current_lane() == GameBalance.PLAYER_START_LANE, "Touch uses the same action path")
 

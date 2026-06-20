@@ -13,6 +13,7 @@ enum GameState { READY, PLAYING, GAME_OVER }
 var state: int = GameState.READY
 var state_transition_in_progress := false
 var state_transition_serial := 0
+var last_primary_input_source: int = PrimaryInput.Source.NONE
 
 var rng := RandomNumberGenerator.new()
 var wave_director := WaveDirector.new()
@@ -81,22 +82,14 @@ func _process(delta: float) -> void:
         displayed_score = new_score
         hud.update_stats(displayed_score, best_score, shards)
 
-func _input(event: InputEvent) -> void:
-    if _is_primary_action_pressed(event):
-        _handle_primary_action()
+func _unhandled_input(event: InputEvent) -> void:
+    var input_source := PrimaryInput.source_for(event)
+    if input_source == PrimaryInput.Source.NONE:
+        return
 
-func _is_primary_action_pressed(event: InputEvent) -> bool:
-    if event is InputEventScreenTouch:
-        return event.pressed
-    if event is InputEventMouseButton:
-        return event.button_index == MOUSE_BUTTON_LEFT and event.pressed
-    if event is InputEventKey:
-        return (
-            event.pressed
-            and not event.echo
-            and (event.keycode == KEY_SPACE or event.keycode == KEY_ENTER)
-        )
-    return false
+    last_primary_input_source = input_source
+    get_viewport().set_input_as_handled()
+    _handle_primary_action()
 
 func _handle_primary_action() -> void:
     # A state change remains locked through the current frame. This prevents a
