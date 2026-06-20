@@ -11,9 +11,9 @@ This document is the project’s living checklist. Update it whenever a mileston
 
 ## Current Focus
 
-**Foundation Phase — Step 7: Unify Input Behavior**
+**Foundation Phase — Step 8: Complete the Portrait UI and Safe-Area Pass**
 
-The save-service milestone is implemented and documented in [`SAVE_SERVICE_REPORT.md`](SAVE_SERVICE_REPORT.md). The next implementation branch should finish the input contract by verifying every supported input path, release/repeat filtering, and UI pass-through behavior.
+The input-contract milestone is implemented and documented in [`INPUT_CONTRACT_REPORT.md`](INPUT_CONTRACT_REPORT.md). The next implementation branch should validate and adapt the interface across tall portrait aspect ratios, large scores, and mobile safe areas.
 
 Every playable update must increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
@@ -92,14 +92,18 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Add dedicated persistence smoke tests.
   - [x] Record the save-service report.
 
-- [ ] **Step 7 — Unify input behavior.** **Next**
-  - [ ] Verify touch, mouse, Space, and Enter use the same action path.
-  - [ ] Ignore repeat and release events.
-  - [ ] Ensure decorative UI never consumes gameplay taps.
+- [x] **Step 7 — Unify input behavior.**
+  - [x] Add `scripts/input/primary_input.gd`.
+  - [x] Route touch, mouse, Space, Enter, and keypad Enter through one action path.
+  - [x] Ignore release, repeat, unrelated-key, secondary-button, and secondary-touch events.
+  - [x] Move gameplay handling to `_unhandled_input()`.
+  - [x] Ensure every decorative HUD control passes pointer input through.
+  - [x] Add dedicated Viewport and input-filter smoke tests.
+  - [x] Record the input-contract report.
 
 ### Presentation and Platform Readiness
 
-- [ ] **Step 8 — Complete the portrait UI and safe-area pass.**
+- [ ] **Step 8 — Complete the portrait UI and safe-area pass.** **Next**
   - [ ] Test 9:16, 9:19.5, and 9:20 layouts.
   - [ ] Verify six-digit scores fit.
   - [ ] Verify panels remain visible on tall screens and cutout devices.
