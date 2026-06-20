@@ -4,7 +4,7 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const OBSTACLE_SCENE_PATH := "res://scenes/obstacle.tscn"
 const PICKUP_SCENE_PATH := "res://scenes/pickup.tscn"
 const SAVE_PATH := SaveService.DEFAULT_SAVE_PATH
-const EXPECTED_VERSION := "0.1.0-dev.7"
+const EXPECTED_VERSION := "0.1.0-dev.8"
 
 var failures: Array[String] = []
 
