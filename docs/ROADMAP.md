@@ -10,9 +10,9 @@ This is the project’s living checklist. Update it whenever work is completed, 
 
 ## Current Focus
 
-**Foundation Step 11 — Android Foundation Validation**
+**Foundation Step 11 — Physical Android Device Validation**
 
-Step 10 is complete and documented in [`DEVELOPMENT_DIAGNOSTICS_REPORT.md`](DEVELOPMENT_DIAGNOSTICS_REPORT.md). The final foundation step must produce a reproducible Android debug build and validate the systems that headless CI cannot physically observe.
+The Android export foundation is now operational: the debug preset is committed, the setup and test instructions are documented, and GitHub Actions successfully produces an installable debug APK. The remaining work requires a real Android phone to verify touch feel, haptics, audio, cutouts, lifecycle behavior, and persistence.
 
 Every playable update must increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
@@ -103,10 +103,16 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Fail CI when Godot reports ObjectDB teardown leaks.
 
 - [ ] **Step 11 — Android foundation validation** **Next**
-  - [ ] Commit an Android debug export preset without secrets.
-  - [ ] Document JDK, Android SDK, and export-template setup.
-  - [ ] Export a debug APK.
-  - [ ] Install and launch it on physical Android hardware.
+  - [x] Change desktop portrait scaling to `keep_width` so the playfield stays centered on wide screens.
+  - [x] Request a centered initial standalone desktop window position.
+  - [x] Commit a secret-free Android debug export preset.
+  - [x] Enable Android ETC2/ASTC texture imports.
+  - [x] Document JDK, Android SDK, export-template, installation, and log-capture setup.
+  - [x] Add a reproducible Android debug-build workflow.
+  - [x] Export an arm64 debug APK successfully in CI.
+  - [x] Record and verify the APK SHA-256 checksum.
+  - [x] Add a reusable physical-device test report.
+  - [ ] Install and launch the APK on physical Android hardware.
   - [ ] Test portrait orientation and touch response.
   - [ ] Test switch, collect, and crash haptics by feel.
   - [ ] Test generated audio through speakers and headphones.
