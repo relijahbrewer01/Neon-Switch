@@ -23,7 +23,7 @@ Only initial presses count. Releases, repeated key events, unrelated keys, other
 3. Import `project.godot` in Godot.
 4. Press F6/F5 or click Play.
 
-The design baseline is 720×1280 portrait. `canvas_items` with `keep_width` keeps the portrait playfield centered on wide desktop windows and expands the logical height on taller phones.
+The design baseline is 720×1280 portrait. Expanded canvas scaling supports tall phones and resizable desktop windows. The fixed 720-wide gameplay column, HUD content, neon rails, obstacles, pickups, and player are recentered whenever extra horizontal canvas appears, so the playable area no longer clings to the left side of a wide PC window.
 
 The standalone desktop window also requests a centered initial position. The small top-left version label reads `application/config/version` from `project.godot`.
 
@@ -85,6 +85,7 @@ Neon-Switch/
 │   ├── game/save_service.gd
 │   ├── game/wave_director.gd
 │   ├── input/primary_input.gd
+│   ├── ui/playfield_centerer.gd
 │   ├── ui/portrait_layout.gd
 │   ├── background.gd
 │   ├── hud.gd
@@ -104,12 +105,13 @@ Neon-Switch/
 - `wave_director.gd` builds validated wave definitions.
 - `save_service.gd` owns best-score persistence.
 - `primary_input.gd` normalizes supported controls.
-- `portrait_layout.gd` maps mobile display safe areas into logical canvas coordinates.
+- `portrait_layout.gd` maps mobile safe areas and calculates the centered portrait column.
+- `playfield_centerer.gd` applies the centered column offset to gameplay while preserving screen shake.
 - `feedback_service.gd` owns generated audio, event playback, pitch variation, and mobile vibration policy.
 - `debug_overlay.gd` displays a read-only runtime snapshot supplied by the game controller.
 - `main.gd` coordinates game state, scoring, entities, saves, normalized input, semantic feedback, diagnostics, and deterministic run seeding.
-- `background.gd` renders across the active logical viewport.
-- `hud.gd` builds the interface inside safe and content rectangles.
+- `background.gd` fills the active viewport while aligning rails and player-zone effects with the centered gameplay column.
+- `hud.gd` builds the interface inside centered safe and content rectangles.
 
 ## Development Diagnostics
 
@@ -129,23 +131,24 @@ Every run then resets the gameplay RNG to the same seed. Use `--seed=random` or 
 
 Playback reuses those same objects. Feedback owns separate random generators, so presentation cannot alter obstacle-wave randomness. Desktop builds safely ignore haptic requests, and headless validation exercises routing without creating physical playback objects.
 
-## Portrait Layout
+## Responsive Layout
 
-The project uses `canvas_items` scaling with `keep_width`.
+The project uses `canvas_items` scaling with `expand`.
 
-Validated logical layouts:
+Validated layouts include:
 
 - 720×1280 — 9:16
 - 720×1560 — 9:19.5
 - 720×1600 — 9:20
+- 1600×900 — wide desktop validation
 
-The fixed logical width keeps both gameplay lanes centered on wide desktop displays. Taller portrait displays receive additional vertical canvas space. The HUD keeps score information, panels, diagnostics, and the build version inside the calculated safe area.
+Tall portrait displays receive additional vertical canvas space. Wide desktop displays receive background space on both sides while the 720-wide gameplay and HUD columns remain centered.
 
 ## Automated Validation
 
 GitHub Actions imports and parses the project with Godot 4.6.3, runs all six Godot smoke-test suites, rejects ObjectDB teardown leaks, and exports the Android debug APK.
 
-Coverage includes the complete run loop, entity contracts, input routing, save resilience, restart stress, wave fairness, portrait geometry, centered desktop scaling policy, safe-area containment, generated-audio reuse, deterministic seeds, diagnostics, timer cancellation, and build versioning.
+Coverage includes the complete run loop, entity contracts, input routing, save resilience, restart stress, wave fairness, portrait geometry, centered widescreen gameplay, safe-area containment, generated-audio reuse, deterministic seeds, diagnostics, timer cancellation, and build versioning.
 
 ## License
 
