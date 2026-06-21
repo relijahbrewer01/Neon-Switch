@@ -4,7 +4,7 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const OBSTACLE_SCENE_PATH := "res://scenes/obstacle.tscn"
 const PICKUP_SCENE_PATH := "res://scenes/pickup.tscn"
 const SAVE_PATH := SaveService.DEFAULT_SAVE_PATH
-const EXPECTED_VERSION := "0.1.0-dev.10"
+const EXPECTED_VERSION := "0.1.0-dev.11"
 
 var failures: Array[String] = []
 
@@ -18,6 +18,14 @@ func _run() -> void:
     _expect(
         str(ProjectSettings.get_setting("application/config/version", "")) == EXPECTED_VERSION,
         "Project exposes the expected canonical version"
+    )
+    _expect(
+        str(ProjectSettings.get_setting("display/window/stretch/aspect", "")) == "keep_width",
+        "Portrait playfield keeps its width and centers on wider desktop windows"
+    )
+    _expect(
+        int(ProjectSettings.get_setting("display/window/size/initial_position_type", -1)) == 1,
+        "Standalone desktop window opens centered on the primary screen"
     )
     _expect(GameBalance.LANE_X == [210.0, 510.0], "Balance config preserves lane positions")
     _expect(is_equal_approx(GameBalance.START_SPEED, 650.0), "Balance config preserves starting speed")
