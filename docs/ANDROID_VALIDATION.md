@@ -11,7 +11,7 @@ Package: com.elijah.neonswitch
 Output: build/android/neon-switch-debug.apk
 Architecture: arm64-v8a
 CI result: PASS
-APK SHA-256: 270491a4f9ecb5a19d94980537d33b7aa2a6c10fee877987ca2305f383507653
+APK SHA-256: 271d282836093fc59452531c942c0c3295033d1aafc9bb2c6d0d4389e5570932
 ```
 
 The committed preset contains no private signing material. Local and CI debug builds use a disposable or machine-local debug keystore.
@@ -126,10 +126,10 @@ On Windows PowerShell:
 Get-FileHash .\build\android\neon-switch-debug.apk -Algorithm SHA256
 ```
 
-Expected checksum for the validated `0.1.0-dev.11` artifact:
+Expected checksum for the validated centered-layout `0.1.0-dev.11` artifact:
 
 ```text
-270491A4F9ECB5A19D94980537D33B7AA2A6C10FEE877987CA2305F383507653
+271D282836093FC59452531C942C0C3295033D1AAFC9BB2C6D0D4389E5570932
 ```
 
 A different checksum is normal after any source, resource, export-template, or signing-key change. The important check is that the downloaded APK matches the checksum distributed alongside that same artifact.
