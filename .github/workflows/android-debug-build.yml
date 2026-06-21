@@ -80,7 +80,7 @@ jobs:
           set -euo pipefail
           mkdir -p "${HOME}/.config/godot"
           cat > "${HOME}/.config/godot/editor_settings-4.6.tres" <<EOF
-          [gd_resource format=3]
+          [gd_resource type="EditorSettings" format=3]
 
           [resource]
           export/android/java_sdk_path = "${JAVA_HOME}"
