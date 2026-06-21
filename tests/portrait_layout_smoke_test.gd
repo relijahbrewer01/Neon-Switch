@@ -11,8 +11,8 @@ func _run() -> void:
     print("[portrait-layout] Starting portrait and safe-area smoke test")
 
     _expect(
-        str(ProjectSettings.get_setting("display/window/stretch/aspect", "")) == "expand",
-        "Project uses expanded aspect scaling for tall portrait displays"
+        str(ProjectSettings.get_setting("display/window/stretch/aspect", "")) == "keep_width",
+        "Project keeps portrait width fixed, centers wide screens, and expands vertically"
     )
 
     var mapped_safe_area := PortraitLayout.map_display_safe_area(
