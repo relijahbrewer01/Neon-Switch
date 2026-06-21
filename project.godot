@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Neon Switch"
-config/version="0.1.0-dev.10"
+config/version="0.1.0-dev.11"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -26,6 +26,7 @@ window/size/viewport_width=720
 window/size/viewport_height=1280
 window/size/window_width_override=405
 window/size/window_height_override=720
+window/size/initial_position_type=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
@@ -46,4 +47,5 @@ common/enable_pause_aware_picking=true
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.018, 0.024, 0.055, 1)

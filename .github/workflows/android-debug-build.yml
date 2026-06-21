@@ -1,0 +1,151 @@
+name: Android Debug Build
+
+on:
+  push:
+    branches:
+      - main
+      - "foundation/android-validation"
+    paths:
+      - "project.godot"
+      - "export_presets.cfg"
+      - "scenes/**"
+      - "scripts/**"
+      - "icon.svg"
+      - ".github/workflows/android-debug-build.yml"
+  pull_request:
+    paths:
+      - "project.godot"
+      - "export_presets.cfg"
+      - "scenes/**"
+      - "scripts/**"
+      - "icon.svg"
+      - ".github/workflows/android-debug-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-android-debug:
+    name: Export Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      GODOT_VERSION: "4.6.3"
+      GODOT_BIN: "Godot_v4.6.3-stable_linux.x86_64"
+      ANDROID_PRESET: "Android Debug"
+      APK_PATH: "build/android/neon-switch-debug.apk"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up OpenJDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "build-tools;35.0.1" \
+            "platforms;android-35" \
+            "cmake;3.10.2.4988404" \
+            "ndk;28.1.13356709"
+
+      - name: Download Godot and export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_BIN}.zip" \
+            --output godot.zip
+          curl --fail --location --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" \
+            --output export_templates.tpz
+          unzip -q godot.zip
+          chmod +x "${GODOT_BIN}"
+          mkdir -p "${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          unzip -q export_templates.tpz -d export-template-package
+          cp -R export-template-package/templates/. \
+            "${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+
+      - name: Configure Godot Android paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${HOME}/.config/godot"
+          cat > "${HOME}/.config/godot/editor_settings-4.6.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/android_sdk_path = "${ANDROID_HOME}"
+          EOF
+
+      - name: Create disposable debug keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -v \
+            -keystore "${RUNNER_TEMP}/neon-switch-debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Neon Switch,C=US"
+
+      - name: Import project
+        shell: bash
+        run: |
+          set -o pipefail
+          "./${GODOT_BIN}" --verbose --headless --editor --path . --quit 2>&1 | tee android-import.log
+
+      - name: Export Android debug APK
+        shell: bash
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/neon-switch-debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          set -o pipefail
+          mkdir -p "$(dirname "${APK_PATH}")"
+          "./${GODOT_BIN}" --verbose --headless --path . \
+            --export-debug "${ANDROID_PRESET}" "${APK_PATH}" 2>&1 | tee android-export.log
+          test -s "${APK_PATH}"
+
+      - name: Record APK metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum "${APK_PATH}" | tee android-apk.sha256
+          ls -lh "${APK_PATH}"
+
+      - name: Upload Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-switch-android-debug
+          path: |
+            build/android/neon-switch-debug.apk
+            android-apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Android export logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-switch-android-export-logs
+          path: |
+            android-import.log
+            android-export.log
+          if-no-files-found: warn
+          retention-days: 14

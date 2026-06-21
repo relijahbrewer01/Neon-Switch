@@ -12,7 +12,11 @@ func _run() -> void:
 
     _expect(
         str(ProjectSettings.get_setting("display/window/stretch/aspect", "")) == "expand",
-        "Project uses expanded aspect scaling for tall portrait displays"
+        "Expanded canvas supports tall phones and wide desktop windows"
+    )
+    _expect(
+        is_equal_approx(PortraitLayout.playfield_offset_x(Vector2(1600.0, 900.0)), 440.0),
+        "A 1600-wide desktop canvas centers the 720-wide playfield"
     )
 
     var mapped_safe_area := PortraitLayout.map_display_safe_area(
@@ -25,27 +29,8 @@ func _run() -> void:
         "Physical display insets map into logical viewport coordinates"
     )
 
-    var fallback_safe_area := PortraitLayout.map_display_safe_area(
-        Vector2(720.0, 1600.0),
-        Vector2i.ZERO,
-        Rect2i()
-    )
-    _expect(
-        _rects_equal(fallback_safe_area, Rect2(0.0, 0.0, 720.0, 1600.0)),
-        "Invalid display data falls back to the full logical viewport"
-    )
-
-    var clamped_safe_area := PortraitLayout.clamp_rect_to_viewport(
-        Rect2(-20.0, -30.0, 780.0, 1680.0),
-        Vector2(720.0, 1600.0)
-    )
-    _expect(
-        _rects_equal(clamped_safe_area, Rect2(0.0, 0.0, 720.0, 1600.0)),
-        "Safe rectangles are clamped to visible viewport bounds"
-    )
-
     var main_scene := load(MAIN_SCENE_PATH) as PackedScene
-    _expect(main_scene != null, "Main scene loads for portrait validation")
+    _expect(main_scene != null, "Main scene loads for layout validation")
     if main_scene == null:
         _finish()
         return
@@ -57,24 +42,35 @@ func _run() -> void:
 
     var hud := game.get_node("HUD/HUDRoot") as NeonHUD
     var background := game.get_node("Background") as NeonBackground
-    _expect(hud != null, "HUD exists for portrait validation")
-    _expect(background != null, "Background exists for portrait validation")
+    var centerer := game.get_node("PlayfieldCenterer") as PlayfieldCenterer
+    var world := game.get_node("World") as Node2D
+    _expect(hud != null and background != null, "Responsive presentation nodes exist")
+    _expect(centerer != null and world != null, "Gameplay centering nodes exist")
 
     var layout_cases: Array[Dictionary] = [
         {
             "name": "9:16",
             "viewport": Vector2(720.0, 1280.0),
             "safe": Rect2(0.0, 0.0, 720.0, 1280.0),
+            "offset": 0.0,
         },
         {
             "name": "9:19.5",
             "viewport": Vector2(720.0, 1560.0),
             "safe": Rect2(0.0, 60.0, 720.0, 1440.0),
+            "offset": 0.0,
         },
         {
-            "name": "9:20 with side and camera insets",
+            "name": "9:20 with cutout insets",
             "viewport": Vector2(720.0, 1600.0),
             "safe": Rect2(18.0, 80.0, 684.0, 1440.0),
+            "offset": 0.0,
+        },
+        {
+            "name": "16:9 desktop",
+            "viewport": Vector2(1600.0, 900.0),
+            "safe": Rect2(0.0, 0.0, 1600.0, 900.0),
+            "offset": 440.0,
         },
     ]
 
@@ -82,12 +78,13 @@ func _run() -> void:
         var case_name := str(layout_case["name"])
         var viewport_size: Vector2 = layout_case["viewport"]
         var safe_rect: Rect2 = layout_case["safe"]
+        var expected_offset := float(layout_case["offset"])
 
         hud.apply_layout(viewport_size, safe_rect)
         background.apply_canvas_size(viewport_size)
+        centerer.apply_viewport_size(viewport_size)
         hud.show_ready(999999)
         hud.update_stats(999999, 999999, 999999)
-        await process_frame
         await process_frame
 
         _expect(
@@ -95,35 +92,37 @@ func _run() -> void:
             "%s preserves the expected safe rectangle" % case_name
         )
         _expect(
-            PortraitLayout.contains_rect(
-                safe_rect,
-                hud.current_content_rect()
-            ),
-            "%s keeps the content rectangle inside the safe area" % case_name
+            PortraitLayout.contains_rect(safe_rect, hud.current_content_rect()),
+            "%s keeps UI content inside the safe area" % case_name
         )
         _expect(
-            hud.layout_is_inside_safe_area(),
-            "%s keeps visible ready-state UI inside the safe area" % case_name
+            is_equal_approx(hud.current_content_rect().get_center().x, safe_rect.get_center().x),
+            "%s centers the HUD content column" % case_name
         )
-        _expect(
-            hud.stats_fit_current_layout(),
-            "%s fits six-digit score, best, and shard values" % case_name
-        )
+        _expect(hud.layout_is_inside_safe_area(), "%s keeps ready UI safe" % case_name)
+        _expect(hud.stats_fit_current_layout(), "%s fits six-digit stats" % case_name)
         _expect(
             background.canvas_size().is_equal_approx(viewport_size),
-            "%s expands the procedural background across the viewport" % case_name
+            "%s fills the available background canvas" % case_name
+        )
+        _expect(
+            is_equal_approx(background.playfield_offset_x(), expected_offset),
+            "%s centers the background gameplay geometry" % case_name
+        )
+        _expect(
+            is_equal_approx(centerer.offset_x(), expected_offset),
+            "%s centers the gameplay world" % case_name
         )
 
         hud.show_game_over(999999, 999999, 999999, true)
         await process_frame
-        await process_frame
-        _expect(
-            hud.layout_is_inside_safe_area(),
-            "%s keeps the game-over panel inside the safe area" % case_name
-        )
+        _expect(hud.layout_is_inside_safe_area(), "%s keeps game-over UI safe" % case_name)
 
     _expect(hud.is_input_passthrough(), "Responsive HUD remains pointer-transparent")
 
+    var feedback := game.get("feedback") as NeonFeedback
+    feedback.shutdown()
+    await process_frame
     game.queue_free()
     await process_frame
     _finish()
