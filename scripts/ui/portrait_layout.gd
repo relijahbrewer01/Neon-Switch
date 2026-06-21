@@ -1,10 +1,9 @@
 extends RefCounted
 class_name PortraitLayout
 
-## Maps physical mobile safe-area data into the project's logical viewport.
-##
-## Runtime code uses the display query on mobile. Tests may supply explicit
-## display and safe rectangles so cutout behavior is deterministic in headless CI.
+## Maps physical mobile safe-area data into the project's logical viewport and
+## keeps the 720-wide gameplay column centered when expanded desktop windows
+## expose additional horizontal canvas space.
 
 const DESIGN_SIZE := Vector2(720.0, 1280.0)
 const CONTENT_GUTTER_X := 28.0
@@ -60,25 +59,40 @@ static func clamp_rect_to_viewport(rect: Rect2, viewport_size: Vector2) -> Rect2
         return Rect2(Vector2.ZERO, valid_viewport_size)
     return Rect2(Vector2(left, top), Vector2(right - left, bottom - top))
 
+static func playfield_offset_x(viewport_size: Vector2) -> float:
+    var valid_viewport_size := _valid_viewport_size(viewport_size)
+    return maxf(0.0, (valid_viewport_size.x - DESIGN_SIZE.x) * 0.5)
+
+static func centered_playfield_rect(rect: Rect2) -> Rect2:
+    var width := minf(rect.size.x, DESIGN_SIZE.x)
+    return Rect2(
+        Vector2(rect.position.x + (rect.size.x - width) * 0.5, rect.position.y),
+        Vector2(width, rect.size.y)
+    )
+
 static func content_rect(safe_rect: Rect2) -> Rect2:
+    # Wide desktop windows expose additional horizontal canvas under `expand`.
+    # Cap UI to the portrait design width and center that column instead of
+    # allowing containers and gameplay information to cling to the left edge.
+    var playfield_rect := centered_playfield_rect(safe_rect)
     var horizontal_gutter := minf(
         CONTENT_GUTTER_X,
-        maxf(0.0, (safe_rect.size.x - MIN_CONTENT_WIDTH) * 0.5)
+        maxf(0.0, (playfield_rect.size.x - MIN_CONTENT_WIDTH) * 0.5)
     )
     var top_gutter := minf(
         CONTENT_GUTTER_TOP,
-        maxf(0.0, safe_rect.size.y - MIN_CONTENT_HEIGHT)
+        maxf(0.0, playfield_rect.size.y - MIN_CONTENT_HEIGHT)
     )
     var bottom_gutter := minf(
         CONTENT_GUTTER_BOTTOM,
-        maxf(0.0, safe_rect.size.y - MIN_CONTENT_HEIGHT - top_gutter)
+        maxf(0.0, playfield_rect.size.y - MIN_CONTENT_HEIGHT - top_gutter)
     )
 
     return Rect2(
-        safe_rect.position + Vector2(horizontal_gutter, top_gutter),
+        playfield_rect.position + Vector2(horizontal_gutter, top_gutter),
         Vector2(
-            maxf(1.0, safe_rect.size.x - horizontal_gutter * 2.0),
-            maxf(1.0, safe_rect.size.y - top_gutter - bottom_gutter)
+            maxf(1.0, playfield_rect.size.x - horizontal_gutter * 2.0),
+            maxf(1.0, playfield_rect.size.y - top_gutter - bottom_gutter)
         )
     )
 
