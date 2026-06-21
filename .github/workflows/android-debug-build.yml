@@ -134,7 +134,16 @@ jobs:
           path: |
             build/android/neon-switch-debug.apk
             android-apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Android export logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-switch-android-export-logs
+          path: |
             android-import.log
             android-export.log
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
