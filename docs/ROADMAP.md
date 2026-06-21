@@ -12,7 +12,7 @@ This is the project’s living checklist. Update it whenever work is completed, 
 
 **Foundation Step 11 — Physical Android Device Validation**
 
-The Android export foundation is now operational: the debug preset is committed, the setup and test instructions are documented, and GitHub Actions successfully produces an installable debug APK. The remaining work requires a real Android phone to verify touch feel, haptics, audio, cutouts, lifecycle behavior, and persistence.
+The Android export foundation is operational: the debug preset is committed, setup and test instructions are documented, and GitHub Actions successfully produces an installable debug APK. The remaining work requires a real Android phone to verify touch feel, haptics, audio, cutouts, lifecycle behavior, and persistence.
 
 Every playable update must increment the build version according to [`VERSIONING.md`](VERSIONING.md).
 
@@ -103,8 +103,10 @@ Detailed instructions live in [`FOUNDATION_PLAN.md`](FOUNDATION_PLAN.md).
   - [x] Fail CI when Godot reports ObjectDB teardown leaks.
 
 - [ ] **Step 11 — Android foundation validation** **Next**
-  - [x] Change desktop portrait scaling to `keep_width` so the playfield stays centered on wide screens.
+  - [x] Keep expanded scaling and center the fixed 720-wide gameplay column on wide desktop canvases.
+  - [x] Center background rails, player-zone effects, entities, and HUD content together.
   - [x] Request a centered initial standalone desktop window position.
+  - [x] Add automated 1600×900 desktop centering coverage.
   - [x] Commit a secret-free Android debug export preset.
   - [x] Enable Android ETC2/ASTC texture imports.
   - [x] Document JDK, Android SDK, export-template, installation, and log-capture setup.
