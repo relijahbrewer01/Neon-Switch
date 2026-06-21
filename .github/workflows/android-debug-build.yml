@@ -55,7 +55,9 @@ jobs:
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
             "build-tools;35.0.1" \
-            "platforms;android-35"
+            "platforms;android-35" \
+            "cmake;3.10.2.4988404" \
+            "ndk;28.1.13356709"
 
       - name: Download Godot and export templates
         shell: bash
@@ -105,7 +107,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          "./${GODOT_BIN}" --headless --editor --path . --quit 2>&1 | tee android-import.log
+          "./${GODOT_BIN}" --verbose --headless --editor --path . --quit 2>&1 | tee android-import.log
 
       - name: Export Android debug APK
         shell: bash
@@ -116,7 +118,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "$(dirname "${APK_PATH}")"
-          "./${GODOT_BIN}" --headless --path . \
+          "./${GODOT_BIN}" --verbose --headless --path . \
             --export-debug "${ANDROID_PRESET}" "${APK_PATH}" 2>&1 | tee android-export.log
           test -s "${APK_PATH}"
 
