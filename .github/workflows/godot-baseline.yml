@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          "./${GODOT_BIN}" --headless --path . --script res://tests/baseline_smoke_test.gd 2>&1 | tee godot-baseline.log
+          "./${GODOT_BIN}" --verbose --headless --path . --script res://tests/baseline_smoke_test.gd 2>&1 | tee godot-baseline.log
 
       - name: Run save service smoke test
         shell: bash
@@ -69,7 +69,23 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          "./${GODOT_BIN}" --headless --path . --script res://tests/feedback_contract_smoke_test.gd 2>&1 | tee godot-feedback-contract.log
+          "./${GODOT_BIN}" --verbose --headless --path . --script res://tests/feedback_contract_smoke_test.gd 2>&1 | tee godot-feedback-contract.log
+
+      - name: Run development diagnostics smoke test
+        shell: bash
+        run: |
+          set -o pipefail
+          "./${GODOT_BIN}" --verbose --headless --path . --script res://tests/development_diagnostics_smoke_test.gd 2>&1 | tee godot-development-diagnostics.log
+
+      - name: Reject ObjectDB teardown leaks
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -H "ObjectDB instances leaked at exit" godot-*.log; then
+            echo "::error::Godot reported leaked ObjectDB instances during test teardown."
+            exit 1
+          fi
+          echo "No ObjectDB teardown leaks detected."
 
       - name: Upload validation logs
         if: always()
@@ -83,5 +99,6 @@ jobs:
             godot-input-contract.log
             godot-portrait-layout.log
             godot-feedback-contract.log
+            godot-development-diagnostics.log
           if-no-files-found: warn
           retention-days: 7

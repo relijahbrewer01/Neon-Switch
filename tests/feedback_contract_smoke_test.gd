@@ -79,7 +79,14 @@ func _validate_service_reuse() -> void:
     if not feedback.haptics_supported():
         _expect(feedback.haptic_emit_count() == 0, "Desktop/headless execution emits no platform vibration")
 
+    feedback.shutdown()
+    _expect(not feedback.is_built(), "Explicit shutdown releases generated feedback resources")
+    _expect(feedback.audio_player_count() == 0, "Shutdown clears audio player references")
+    _expect(feedback.generated_stream_count() == 0, "Shutdown clears generated stream references")
+    await process_frame
+    await process_frame
     feedback.queue_free()
+    await process_frame
     await process_frame
 
 func _validate_main_integration() -> void:
@@ -162,6 +169,9 @@ func _validate_main_integration() -> void:
     if not feedback.haptics_supported():
         _expect(feedback.haptic_emit_count() == 0, "Main integration remains desktop-safe for haptics")
 
+    feedback.shutdown()
+    await process_frame
+    await process_frame
     game.queue_free()
     await process_frame
     await process_frame

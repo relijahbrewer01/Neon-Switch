@@ -4,7 +4,7 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const OBSTACLE_SCENE_PATH := "res://scenes/obstacle.tscn"
 const PICKUP_SCENE_PATH := "res://scenes/pickup.tscn"
 const SAVE_PATH := SaveService.DEFAULT_SAVE_PATH
-const EXPECTED_VERSION := "0.1.0-dev.9"
+const EXPECTED_VERSION := "0.1.0-dev.10"
 
 var failures: Array[String] = []
 
@@ -167,6 +167,9 @@ func _run() -> void:
     _expect(save_service.best_score() == 123, "SaveService receives new best")
     _expect(FileAccess.file_exists(SAVE_PATH), "New best creates save file")
 
+    feedback.shutdown()
+    await process_frame
+    await process_frame
     game.queue_free()
     await process_frame
     await process_frame
@@ -179,6 +182,10 @@ func _run() -> void:
 
     await _validate_restart_stress(reloaded_game, obstacle_scene)
 
+    var reloaded_feedback := reloaded_game.get("feedback") as NeonFeedback
+    reloaded_feedback.shutdown()
+    await process_frame
+    await process_frame
     reloaded_game.queue_free()
     await process_frame
     await process_frame

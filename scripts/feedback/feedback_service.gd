@@ -25,6 +25,7 @@ var _players: Dictionary = {}
 var _streams: Dictionary = {}
 var _play_counts: Dictionary = {}
 var _last_pitch: Dictionary = {}
+var _audio_playback_supported := true
 var _haptics_supported := false
 var _haptic_request_count := 0
 var _haptic_emit_count := 0
@@ -35,13 +36,32 @@ var _noise_rng := RandomNumberGenerator.new()
 func _ready() -> void:
     initialize()
 
+func _exit_tree() -> void:
+    shutdown()
+
 func initialize() -> void:
     if _built:
         return
     _pitch_rng.seed = 94051
     _noise_rng.seed = 61417
+    _audio_playback_supported = DisplayServer.get_name().to_lower() != "headless"
     _haptics_supported = OS.has_feature("mobile")
     _build_resources()
+
+func shutdown() -> void:
+    # AudioServer may retain AudioStreamPlayback objects briefly after a player
+    # leaves the tree. Stop playback and detach streams explicitly so tests and
+    # application shutdown release every playback resource.
+    for player_value in _players.values():
+        var audio_player := player_value as AudioStreamPlayer
+        if audio_player == null:
+            continue
+        audio_player.stop()
+        audio_player.stream = null
+
+    _streams.clear()
+    _players.clear()
+    _built = false
 
 func play_start() -> bool:
     return _play_feedback(FeedbackEvent.START, 1.0)
@@ -64,6 +84,9 @@ func play_crash() -> bool:
 
 func is_built() -> bool:
     return _built
+
+func audio_playback_supported() -> bool:
+    return _audio_playback_supported
 
 func haptics_supported() -> bool:
     return _haptics_supported
@@ -150,7 +173,8 @@ func _play_feedback(event: int, pitch: float) -> bool:
         return false
 
     audio_player.pitch_scale = clampf(pitch, 0.01, 4.0)
-    audio_player.play()
+    if _audio_playback_supported:
+        audio_player.play()
     _play_counts[event] = play_count(event) + 1
     _last_pitch[event] = audio_player.pitch_scale
     return true
