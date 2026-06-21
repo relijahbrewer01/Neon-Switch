@@ -10,6 +10,8 @@ Preset: Android Debug
 Package: com.elijah.neonswitch
 Output: build/android/neon-switch-debug.apk
 Architecture: arm64-v8a
+CI result: PASS
+APK SHA-256: 270491a4f9ecb5a19d94980537d33b7aa2a6c10fee877987ca2305f383507653
 ```
 
 The committed preset contains no private signing material. Local and CI debug builds use a disposable or machine-local debug keystore.
@@ -25,6 +27,8 @@ Install:
 5. Android SDK Build-Tools 35.0.1.
 6. Android SDK Platform 35.
 7. Android SDK Command-line Tools (latest).
+8. CMake 3.10.2.4988404.
+9. Android NDK 28.1.13356709.
 
 The official Godot Android export guide is:
 
@@ -56,6 +60,14 @@ Install the matching Godot 4.6.3 export templates through:
 ```text
 Editor → Manage Export Templates
 ```
+
+The project enables:
+
+```text
+rendering/textures/vram_compression/import_etc2_astc=true
+```
+
+Godot requires the Android texture-import format before it considers the Android preset exportable.
 
 ## Export Locally
 
@@ -96,15 +108,31 @@ The workflow is:
 It:
 
 1. Installs OpenJDK 17.
-2. Verifies the Android 35 platform and Build-Tools 35.0.1.
+2. Installs the Android platform, Build-Tools, CMake, and NDK.
 3. Downloads Godot 4.6.3 and matching export templates.
 4. Creates a disposable debug keystore.
-5. Imports the project.
+5. Imports the project and Android texture formats.
 6. Exports `neon-switch-debug.apk`.
 7. Records a SHA-256 checksum.
 8. Uploads the APK and export logs as workflow artifacts.
 
 The CI keystore is intentionally disposable. CI builds are for installation and testing, not Play Store release.
+
+## Verify the APK
+
+On Windows PowerShell:
+
+```powershell
+Get-FileHash .\build\android\neon-switch-debug.apk -Algorithm SHA256
+```
+
+Expected checksum for the validated `0.1.0-dev.11` artifact:
+
+```text
+270491A4F9ECB5A19D94980537D33B7AA2A6C10FEE877987CA2305F383507653
+```
+
+A different checksum is normal after any source, resource, export-template, or signing-key change. The important check is that the downloaded APK matches the checksum distributed alongside that same artifact.
 
 ## Install on a Phone
 
