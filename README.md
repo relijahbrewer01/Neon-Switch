@@ -23,9 +23,28 @@ Only initial presses count. Releases, repeated key events, unrelated keys, other
 3. Import `project.godot` in Godot.
 4. Press F6/F5 or click Play.
 
-The design baseline is 720×1280 portrait. Expanded canvas scaling supports taller portrait displays without letterboxing.
+The design baseline is 720×1280 portrait. `canvas_items` with `keep_width` keeps the portrait playfield centered on wide desktop windows and expands the logical height on taller phones.
 
-The small top-left version label reads `application/config/version` from `project.godot`.
+The standalone desktop window also requests a centered initial position. The small top-left version label reads `application/config/version` from `project.godot`.
+
+## Android Debug Build
+
+The repository contains a secret-free **Android Debug** export preset and an automated GitHub Actions build.
+
+```text
+Package: com.elijah.neonswitch
+Architecture: arm64-v8a
+Output: build/android/neon-switch-debug.apk
+```
+
+The workflow installs OpenJDK 17, the Android SDK toolchain, Godot 4.6.3, matching export templates, and a disposable debug keystore before producing an installable APK and SHA-256 checksum.
+
+Local setup, installation commands, and the hardware checklist are documented in:
+
+```text
+docs/ANDROID_VALIDATION.md
+docs/ANDROID_DEVICE_TEST_REPORT.md
+```
 
 ## Versioning
 
@@ -42,8 +61,14 @@ The Version Guard workflow rejects playable changes that reuse the previous vers
 ```text
 Neon-Switch/
 ├── project.godot
+├── export_presets.cfg
 ├── README.md
+├── .github/workflows/
+│   ├── android-debug-build.yml
+│   └── godot-baseline.yml
 ├── docs/
+│   ├── ANDROID_DEVICE_TEST_REPORT.md
+│   ├── ANDROID_VALIDATION.md
 │   ├── DEVELOPMENT_DIAGNOSTICS_REPORT.md
 │   ├── FEEDBACK_CONTRACT_REPORT.md
 │   ├── FOUNDATION_PLAN.md
@@ -88,24 +113,9 @@ Neon-Switch/
 
 ## Development Diagnostics
 
-Press **F3** to toggle the runtime diagnostics panel. It displays:
+Press **F3** to toggle the runtime diagnostics panel. It displays state, seed mode, speed, spawn interval, elapsed time, lane, active entity counts, and the last accepted primary input source.
 
-- State
-- Seed mode
-- Speed
-- Spawn interval
-- Elapsed time
-- Lane
-- Obstacle, pickup, and total entity counts
-- Last accepted primary input source
-
-Random mode is the default. Set a non-negative seed in `project.godot`:
-
-```text
-debug/neon_switch/deterministic_seed=424242
-```
-
-or launch with a user argument:
+Random mode is the default. Set a non-negative seed in `project.godot` or launch with:
 
 ```text
 godot --path . -- --seed=424242
@@ -115,20 +125,13 @@ Every run then resets the gameplay RNG to the same seed. Use `--seed=random` or 
 
 ## Audio and Haptics
 
-`NeonFeedback` builds four streams and four `AudioStreamPlayer` nodes once at startup:
+`NeonFeedback` builds four streams and four `AudioStreamPlayer` nodes once at startup for start, switch, collect, and crash events.
 
-- Start
-- Switch
-- Collect
-- Crash
-
-Playback reuses those same objects. Collect pitch variation and crash-noise generation use feedback-owned random generators, so presentation cannot alter obstacle-wave randomness.
-
-Only the feedback service may call the platform vibration API. Desktop builds safely ignore haptic requests. Headless validation exercises feedback routing without creating physical playback objects, preventing meaningless audio-server teardown leaks.
+Playback reuses those same objects. Feedback owns separate random generators, so presentation cannot alter obstacle-wave randomness. Desktop builds safely ignore haptic requests, and headless validation exercises routing without creating physical playback objects.
 
 ## Portrait Layout
 
-The project uses `canvas_items` scaling with the `expand` aspect mode.
+The project uses `canvas_items` scaling with `keep_width`.
 
 Validated logical layouts:
 
@@ -136,24 +139,13 @@ Validated logical layouts:
 - 720×1560 — 9:19.5
 - 720×1600 — 9:20
 
-The HUD keeps score information, status panels, footer text, the diagnostics panel, and the build version inside the calculated safe area. Six-digit score, best-score, and shard values are covered by automated tests.
+The fixed logical width keeps both gameplay lanes centered on wide desktop displays. Taller portrait displays receive additional vertical canvas space. The HUD keeps score information, panels, diagnostics, and the build version inside the calculated safe area.
 
 ## Automated Validation
 
-GitHub Actions imports and parses the project with Godot 4.6.3, then runs:
+GitHub Actions imports and parses the project with Godot 4.6.3, runs all six Godot smoke-test suites, rejects ObjectDB teardown leaks, and exports the Android debug APK.
 
-```text
-res://tests/baseline_smoke_test.gd
-res://tests/save_service_smoke_test.gd
-res://tests/input_contract_smoke_test.gd
-res://tests/portrait_layout_smoke_test.gd
-res://tests/feedback_contract_smoke_test.gd
-res://tests/development_diagnostics_smoke_test.gd
-```
-
-Coverage includes the complete run loop, entity contracts, input routing, save resilience, restart stress, wave fairness, portrait geometry, safe-area containment, generated-audio reuse, feedback routing, deterministic seeds, diagnostics fields, timer cancellation, desktop haptic safety, and the displayed build version.
-
-CI also rejects any Godot log that reports `ObjectDB instances leaked at exit`.
+Coverage includes the complete run loop, entity contracts, input routing, save resilience, restart stress, wave fairness, portrait geometry, centered desktop scaling policy, safe-area containment, generated-audio reuse, deterministic seeds, diagnostics, timer cancellation, and build versioning.
 
 ## License
 
